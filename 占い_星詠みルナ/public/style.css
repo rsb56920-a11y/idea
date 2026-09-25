@@ -301,3 +301,10 @@ h1, h2, h3 { font-family: var(--serif); }
 .legal-table th { width: 36%; color: var(--gold-2); font-weight: 700; font-size: 12px; }
 .unset { color: #ff9fb5; background: rgba(255, 159, 181, 0.12); border-radius: 4px; padding: 0 4px; }
 .pair-label { text-align: center; font-family: var(--serif); font-weight: 700; color: var(--pink); margin-bottom: 12px; padding: 12px; }
+
+/* ---------- ホーム画面に追加 ---------- */
+.install { position: relative; margin-top: 16px; text-align: center; font-size: 14px; line-height: 1.8; }
+.install .muted { font-size: 12px; }
+.install .btn { margin-top: 10px; }
+.install .close { position: absolute; top: 6px; right: 10px; background: none; border: 0; color: var(--muted); font-size: 18px; }
+.ios-steps { margin-top: 10px; font-size: 12px; background: rgba(0, 0, 0, 0.25); border-radius: 12px; padding: 10px; }

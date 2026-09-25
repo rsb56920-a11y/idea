@@ -93,6 +93,7 @@ function renderHome() {
         )
         .join("")}
     </div>
+    ${installCard()}
     ${
       store.history.length
         ? `<div class="section-title">これまでの鑑定</div><div class="panel" style="padding:4px 0">${store.history
@@ -108,6 +109,7 @@ function renderHome() {
       ${LEGAL_LINKS}</div>`;
   app.querySelectorAll(".menu").forEach((b) => (b.onclick = () => (location.hash = `#/${b.dataset.k}`)));
   app.querySelectorAll(".history-item").forEach((el) => (el.onclick = () => (location.hash = `#/result/${el.dataset.id}`)));
+  bindInstallCard();
 }
 
 // ---------- 入力フォーム ----------
@@ -429,6 +431,51 @@ function openPaywall(h) {
     }
   };
 }
+
+// ---------- ホーム画面に追加 ----------
+// Android/PC の Chrome などは beforeinstallprompt でインストールを出せる。iPhone は手順を案内する
+let installEvent = null;
+const isStandalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent);
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  installEvent = e;
+  if (!location.hash || location.hash === "#/") renderHome();
+});
+window.addEventListener("appinstalled", () => {
+  store.installHidden = true;
+  save();
+  toast("ホーム画面に追加しました");
+});
+
+function installCard() {
+  if (isStandalone() || store.installHidden || (!installEvent && !isIOS())) return "";
+  return `<div class="panel install">
+    <button class="close" id="installClose" aria-label="閉じる">×</button>
+    <b>📲 ホーム画面に追加</b><br>
+    <span class="muted">アプリのようにワンタップで、毎日の運勢をチェックできます</span>
+    ${
+      installEvent
+        ? `<button class="btn gold" id="installBtn">ホーム画面に追加する</button>`
+        : `<div class="ios-steps">Safari の <b>共有ボタン</b>(□に↑)→「<b>ホーム画面に追加</b>」をタップ</div>`
+    }</div>`;
+}
+function bindInstallCard() {
+  $("#installBtn")?.addEventListener("click", async () => {
+    installEvent.prompt();
+    await installEvent.userChoice;
+    installEvent = null;
+    renderHome();
+  });
+  $("#installClose")?.addEventListener("click", () => {
+    store.installHidden = true;
+    save();
+    renderHome();
+  });
+}
+
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 
 // ---------- 特定商取引法の表記・プライバシーポリシー・利用規約 ----------
 const LEGAL_LINKS = `<div class="legal-links">

@@ -43,6 +43,7 @@ const MIME = {
   ".svg": "image/svg+xml",
   ".png": "image/png",
   ".json": "application/json",
+  ".webmanifest": "application/manifest+json",
 };
 
 // ---------- 占いメニュー ----------
@@ -390,18 +391,25 @@ async function handleDetail(req, res) {
   }
 }
 
+// index.html の %ORIGIN% を公開URLに置き換える(SNSのリンクカードは画像URLが絶対パスでないと表示されない)
+async function sendIndex(req, res) {
+  const html = await readFile(path.join(PUBLIC_DIR, "index.html"), "utf8");
+  const origin = PUBLIC_URL || `http://${req.headers.host}`;
+  res.writeHead(200, { "Content-Type": MIME[".html"] });
+  res.end(html.replaceAll("%ORIGIN%", origin));
+}
+
 async function serveStatic(req, res) {
   const urlPath = decodeURIComponent(new URL(req.url, "http://x").pathname);
-  const filePath = path.join(PUBLIC_DIR, urlPath === "/" ? "index.html" : urlPath);
+  if (urlPath === "/" || urlPath === "/index.html") return sendIndex(req, res);
+  const filePath = path.join(PUBLIC_DIR, urlPath);
   if (!filePath.startsWith(PUBLIC_DIR)) return res.writeHead(403).end();
   try {
     const data = await readFile(filePath);
     res.writeHead(200, { "Content-Type": MIME[path.extname(filePath)] || "application/octet-stream" });
     res.end(data);
   } catch {
-    const data = await readFile(path.join(PUBLIC_DIR, "index.html"));
-    res.writeHead(200, { "Content-Type": MIME[".html"] });
-    res.end(data);
+    sendIndex(req, res);
   }
 }
 
