@@ -1,0 +1,14 @@
+{
+  "name": "zeta-like-chat",
+  "version": "0.1.0",
+  "description": "ZETA風 AIキャラクターチャットアプリ",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0"
+  }
+}
