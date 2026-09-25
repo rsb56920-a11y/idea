@@ -281,3 +281,10 @@ h1, h2, h3 { font-family: var(--serif); }
 }
 #toast.show { opacity: 1; transform: translateX(-50%); }
 .error { color: #ff9fb5; font-size: 13px; text-align: center; }
+
+/* ---------- 相性診断の招待 ---------- */
+.invite { font-size: 14px; line-height: 1.8; margin-bottom: 16px; border-color: var(--pink); background: rgba(242, 167, 195, 0.1); }
+.invite b { color: var(--pink); }
+.invite-cta { margin-top: 16px; text-align: center; font-size: 14px; line-height: 1.8; border-color: var(--pink); }
+.invite-cta .muted { font-size: 12px; }
+.invite-cta .btn { margin-top: 12px; }

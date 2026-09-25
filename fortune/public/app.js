@@ -61,10 +61,11 @@ const topbar = (title) =>
 
 // ---------- ルーティング ----------
 function route() {
-  const [name, arg] = location.hash.replace(/^#\/?/, "").split("/");
+  const [path, query = ""] = location.hash.replace(/^#\/?/, "").split("?");
+  const [name, arg] = path.split("/");
   window.scrollTo(0, 0);
   if (name === "result") return renderResult(arg);
-  if (MENUS[name]) return renderForm(name);
+  if (MENUS[name]) return renderForm(name, new URLSearchParams(query));
   renderHome();
 }
 window.addEventListener("hashchange", route);
@@ -106,12 +107,14 @@ function renderHome() {
 }
 
 // ---------- 入力フォーム ----------
-function field(id, label, type = "text", extra = "") {
-  const v = store.profile[id] || "";
+function field(id, label, type = "text", extra = "", value) {
+  const v = value ?? store.profile[id] ?? "";
   return `<div class="field"><label for="${id}">${label}</label><input id="${id}" type="${type}" value="${esc(v)}" ${extra}></div>`;
 }
 
-function renderForm(menu) {
+function renderForm(menu, params = new URLSearchParams()) {
+  // 相性診断の招待リンク(#/compat?from=名前&rel=関係)から来た場合。誕生日はリンクに載せない
+  const inviter = menu === "compat" ? params.get("from")?.slice(0, 20) : null;
   const m = MENUS[menu];
   const intros = {
     today: "生年月日から星座を読み、今日一日の流れを占います。",
@@ -119,6 +122,7 @@ function renderForm(menu) {
     compat: "ふたりの名前と誕生日から、魂の相性を読み解きます。",
     pastlife: "あなたの名前と誕生日に刻まれた、前世の記憶をたどります。",
   };
+  const rel = params.get("rel");
   const fields = {
     today: field("name", "お名前(ニックネーム可)", "text", 'maxlength="20" required') + field("birthday", "生年月日", "date", "required"),
     tarot:
@@ -126,16 +130,23 @@ function renderForm(menu) {
       `<div class="field"><label for="question">占いたいこと</label><textarea id="question" maxlength="300" placeholder="例：今の仕事を続けるべき？ / 片思いの彼との未来は？" required></textarea></div>`,
     compat: `
       <div class="pair">${field("name", "あなたの名前", "text", 'maxlength="20" required')}${field("birthday", "誕生日", "date")}</div>
-      <div class="pair">${field("partner", "相手の名前", "text", 'maxlength="20" required')}${field("partnerBirthday", "誕生日", "date")}</div>
+      <div class="pair">${field("partner", "相手の名前", "text", 'maxlength="20" required', inviter || "")}${field("partnerBirthday", "誕生日", "date", "", inviter ? "" : undefined)}</div>
       <div class="field"><label for="relation">ふたりの関係</label><select id="relation">
         <option>恋愛</option><option>片思い</option><option>夫婦</option><option>友達</option><option>仕事仲間</option></select></div>`,
     pastlife: field("name", "お名前(フルネーム推奨)", "text", 'maxlength="20" required') + field("birthday", "生年月日", "date", "required"),
   };
   app.innerHTML = `${topbar(m.name)}
-    <p class="intro">${intros[menu]}</p>
+    ${
+      inviter
+        ? `<div class="panel invite"><b>💌 ${esc(inviter)}さんが、あなたとの相性を占いました</b><br>あなたの名前を入れて、ふたりの相性を確かめてみましょう。</div>`
+        : `<p class="intro">${intros[menu]}</p>`
+    }
     <form class="form panel" id="f">${fields[menu]}
       <button class="btn gold" type="submit">${menu === "tarot" ? "カードを選ぶ" : "ルナに占ってもらう"}</button>
     </form>`;
+
+  if (inviter && rel && $("#relation")) $("#relation").value = rel;
+  if (inviter) $("#name")?.focus();
 
   $("#f").onsubmit = (e) => {
     e.preventDefault();
@@ -257,6 +268,12 @@ function renderResult(id) {
       }
     </div>
     ${h.unlocked ? `<p class="advice">「${esc(r.advice)}」</p>` : ""}
+    ${
+      h.menu === "compat"
+        ? `<div class="panel invite-cta"><b>${esc(h.input.partner)}さんにも占ってもらう？</b><br><span class="muted">リンクを送ると、名前が入った状態で相性診断が始まります</span>
+            <button class="btn gold" id="invite">💌 ${esc(h.input.partner)}さんに送る</button></div>`
+        : ""
+    }
     <div class="section-title" style="text-align:center">結果をシェア</div>
     <div class="share">
       <button class="btn x" id="x">𝕏 でポスト</button>
@@ -275,6 +292,29 @@ function renderResult(id) {
     window.open(`https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(location.origin)}`, "_blank");
   };
   $("#img").onclick = () => shareImage(h, scoreLabel);
+  $("#invite")?.addEventListener("click", () => sendInvite(h));
+}
+
+// 相性診断の招待リンクを送る(相手の画面では送り主の名前が入った状態で始まる)
+async function sendInvite(h) {
+  const q = new URLSearchParams({ from: h.input.name || "" });
+  if (h.input.relation) q.set("rel", h.input.relation);
+  const url = `${location.origin}/#/compat?${q}`;
+  const text = `${h.input.name}さんが、あなたとの相性を占いました💞 結果を見てみる？`;
+  if (navigator.share) {
+    try {
+      await navigator.share({ text, url });
+      return;
+    } catch (err) {
+      if (err.name === "AbortError") return;
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(`${text}\n${url}`);
+    toast("リンクをコピーしました。LINEなどで送ってください");
+  } catch {
+    prompt("このリンクを送ってください", url);
+  }
 }
 
 // 決済はデモ。本番ではここを Stripe Checkout などにつなぐ
