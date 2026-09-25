@@ -26,7 +26,7 @@ AI占い師「ルナ」が鑑定する、スマホ向けの占いWebアプリで
 ## 起動方法
 
 ```bash
-cd fortune
+cd 占い_星詠みルナ
 npm install
 export ANTHROPIC_API_KEY=sk-ant-...   # 未設定ならデモモード
 npm start   # → http://localhost:3000
