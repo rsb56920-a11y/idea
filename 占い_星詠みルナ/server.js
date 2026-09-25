@@ -59,6 +59,16 @@ const MENUS = {
 - 未来: ${i.cards?.[2] ?? "?"}
 各カードの意味(正位置/逆位置)を踏まえて解釈すること。`,
   },
+  oshi: {
+    headings: ["推しとの魂のつながり", "推しがあなたにくれる力", "推し活の運気が上がる時", "推しとの縁を深めるには"],
+    prompt: (i) =>
+      `推しとの相性診断です。
+相談者: ${i.name || "?"}(誕生日 ${i.birthday || "不明"})
+推し: ${i.oshi || "?"}(${i.oshiGenre || "ジャンル不明"}、誕生日 ${i.oshiBirthday || "不明"})
+推しの好きなところ: ${i.oshiLove || "(未入力)"}
+score は「推しとの魂のシンクロ率」(0〜100)。70未満にはしない。
+推しが実在の人物の場合でも、その人の私生活・人柄・交際などを事実のように断定しない。相談者の気持ちや推し活の楽しみ方に焦点を当てる。title は推し活が楽しくなるポジティブなものに。`,
+  },
   compat: {
     headings: ["二人の性格の組み合わせ", "うまくいくポイント", "すれ違いやすいポイント", "関係を深めるには"],
     prompt: (i) =>
@@ -171,6 +181,7 @@ const DEMO = {
   titles: {
     tarot: "新しい扉がひらく予感",
     compat: "引き寄せ合うふたり",
+    oshi: "推しと響き合う星のもとに",
     pastlife: "あなたの前世は中世ヴェネツィアのガラス職人",
     today: "小さな幸運が重なる一日",
   },
@@ -182,7 +193,7 @@ const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
 function demoFree(menu, input) {
   return {
     title: DEMO.titles[menu],
-    score: 60 + Math.floor(Math.random() * 38),
+    score: (menu === "oshi" ? 70 : 60) + Math.floor(Math.random() * (menu === "oshi" ? 29 : 38)),
     summary: `${input.name || "あなた"}さん、星たちがあなたに静かに語りかけています。今はちょうど流れが変わる節目。けれど本当に大切なのは、このあとに見える"ある兆し"で……`,
     lucky: { color: pick(DEMO.colors), item: pick(DEMO.items), number: 1 + Math.floor(Math.random() * 99) },
     shareText: "占ってもらったら当たりすぎてた…🔮✨",
@@ -304,8 +315,9 @@ async function readJson(req) {
 // 入力は文字列だけを短く切って使う
 function clean(input) {
   const out = {};
-  for (const k of ["name", "birthday", "partner", "partnerBirthday", "relation", "question", "zodiac"]) {
-    if (typeof input?.[k] === "string") out[k] = input[k].slice(0, k === "question" ? 300 : 40);
+  const long = { question: 300, oshiLove: 100 };
+  for (const k of ["name", "birthday", "partner", "partnerBirthday", "relation", "question", "zodiac", "oshi", "oshiBirthday", "oshiGenre", "oshiLove"]) {
+    if (typeof input?.[k] === "string") out[k] = input[k].slice(0, long[k] || 40);
   }
   if (Array.isArray(input?.cards)) out.cards = input.cards.slice(0, 3).map((c) => String(c).slice(0, 40));
   return out;

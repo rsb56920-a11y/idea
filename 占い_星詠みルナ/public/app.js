@@ -4,7 +4,8 @@
 const pay = { price: 300, mode: "demo" };
 
 const MENUS = {
-  today: { ico: "☀️", name: "今日の運勢", desc: "毎日かわる、あなただけの運勢" },
+  today: { ico: "☀️", name: "今日の運勢", desc: "毎日かわる、あなただけの運勢", badge: "毎日更新" },
+  oshi: { ico: "💜", name: "推し相性診断", desc: "推しとあなたの魂のシンクロ率は？", badge: "NEW", tag: "#推し相性診断" },
   tarot: { ico: "🃏", name: "タロット占い", desc: "3枚のカードが悩みに答えます" },
   compat: { ico: "💞", name: "相性診断", desc: "気になるあの人との相性は？" },
   pastlife: { ico: "🏛️", name: "前世診断", desc: "あなたの魂の記憶をたどる" },
@@ -87,7 +88,7 @@ function renderHome() {
           ([k, m], i) => `
         <button class="menu ${i === 0 ? "wide" : ""}" data-k="${k}">
           <span class="ico">${m.ico}</span>
-          <span><span class="name">${m.name}</span> ${i === 0 ? `<span class="badge">毎日更新</span>` : ""}<br><span class="desc">${m.desc}</span></span>
+          <span><span class="name">${m.name}</span> ${m.badge ? `<span class="badge">${m.badge}</span>` : ""}<br><span class="desc">${m.desc}</span></span>
         </button>`,
         )
         .join("")}
@@ -123,6 +124,7 @@ function renderForm(menu, params = new URLSearchParams()) {
     today: "生年月日から星座を読み、今日一日の流れを占います。",
     tarot: "心に悩みを思い浮かべながら、直感で3枚のカードを選んでください。",
     compat: "ふたりの名前と誕生日から、魂の相性を読み解きます。",
+    oshi: "あなたと推しの星を重ねて、ふたりの魂のシンクロ率を読み解きます。",
     pastlife: "あなたの名前と誕生日に刻まれた、前世の記憶をたどります。",
   };
   const rel = params.get("rel");
@@ -136,6 +138,12 @@ function renderForm(menu, params = new URLSearchParams()) {
       <div class="pair">${field("partner", "相手の名前", "text", 'maxlength="20" required', inviter || "")}${field("partnerBirthday", "誕生日", "date", "", inviter ? "" : undefined)}</div>
       <div class="field"><label for="relation">ふたりの関係</label><select id="relation">
         <option>恋愛</option><option>片思い</option><option>夫婦</option><option>友達</option><option>仕事仲間</option></select></div>`,
+    oshi: `
+      <div class="pair">${field("name", "あなたの名前", "text", 'maxlength="20" required')}${field("birthday", "誕生日", "date")}</div>
+      <div class="pair">${field("oshi", "推しの名前", "text", 'maxlength="30" required placeholder="キャラ名・芸名など"')}${field("oshiBirthday", "推しの誕生日", "date")}</div>
+      <div class="field"><label for="oshiGenre">推しのジャンル</label><select id="oshiGenre">
+        <option>アイドル</option><option>俳優・アーティスト</option><option>VTuber・配信者</option><option>アニメ・漫画・ゲームのキャラ</option><option>スポーツ選手</option><option>その他</option></select></div>
+      <div class="field"><label for="oshiLove">推しの好きなところ(任意)</label><textarea id="oshiLove" maxlength="100" placeholder="例：笑った時の目、仲間思いなところ"></textarea></div>`,
     pastlife: field("name", "お名前(フルネーム推奨)", "text", 'maxlength="20" required') + field("birthday", "生年月日", "date", "required"),
   };
   app.innerHTML = `${topbar(m.name)}
@@ -246,12 +254,19 @@ function gauge(score) {
     </svg><div class="num"><div><b>${score}</b><small>/ 100</small></div></div></div>`;
 }
 
+// 「あなた × 推し」のように誰と誰の結果かを示す
+function pairLabel(h) {
+  if (h.menu === "oshi" && h.input.oshi) return `${h.input.name || "あなた"} × ${h.input.oshi}`;
+  if (h.menu === "compat" && h.input.partner) return `${h.input.name || "あなた"} × ${h.input.partner}`;
+  return "";
+}
+
 function renderResult(id) {
   const h = store.history.find((x) => x.id === id);
   if (!h) return renderHome();
   const r = h.result;
   const m = MENUS[h.menu];
-  const scoreLabel = { today: "総合運", tarot: "運気", compat: "相性度", pastlife: "魂の輝き" }[h.menu];
+  const scoreLabel = { today: "総合運", tarot: "運気", compat: "相性度", oshi: "シンクロ率", pastlife: "魂の輝き" }[h.menu];
 
   app.innerHTML = `${topbar(m.name)}
     <div class="result-head">
@@ -260,6 +275,7 @@ function renderResult(id) {
       ${gauge(r.score)}
       <div class="muted" style="font-size:12px;margin-top:6px">${scoreLabel}</div>
     </div>
+    ${pairLabel(h) ? `<div class="panel pair-label">${esc(pairLabel(h))}</div>` : ""}
     ${h.menu === "tarot" && h.input.cards ? `<div class="panel" style="margin-bottom:12px;font-size:13px;text-align:center">過去：${esc(h.input.cards[0])}　現在：${esc(h.input.cards[1])}　未来：${esc(h.input.cards[2])}</div>` : ""}
     <div class="panel"><p class="summary">${esc(r.summary)}</p></div>
     <div class="lucky">
@@ -306,7 +322,7 @@ function renderResult(id) {
   });
   $("#unlock")?.addEventListener("click", () => openPaywall(h));
   $("#x").onclick = () => {
-    const text = `${r.shareText}\n【${m.name}】${r.title}(${scoreLabel} ${r.score}点)\n#星詠みルナ #AI占い`;
+    const text = `${r.shareText}\n【${m.name}】${r.title}(${scoreLabel} ${r.score}点)\n${m.tag ? m.tag + " " : ""}#星詠みルナ #AI占い`;
     window.open(`https://x.com/intent/post?text=${encodeURIComponent(text)}&url=${encodeURIComponent(location.origin)}`, "_blank");
   };
   $("#img").onclick = () => shareImage(h, scoreLabel);
@@ -541,10 +557,16 @@ async function shareImage(h, scoreLabel) {
   ctx.fillStyle = "#e9c46a";
   ctx.font = `700 40px ${serif}`;
   ctx.fillText(`${MENUS[h.menu].ico} ${MENUS[h.menu].name}`, W / 2, 150);
+  if (pairLabel(h)) {
+    ctx.fillStyle = "#f2a7c3";
+    ctx.font = `700 34px ${serif}`;
+    ctx.fillText(pairLabel(h).slice(0, 30), W / 2, 196);
+  }
 
   ctx.fillStyle = "#f6e3a1";
   ctx.font = `700 64px ${serif}`;
-  wrap(ctx, r.title, W - 200).forEach((l, i) => ctx.fillText(l, W / 2, 260 + i * 84));
+  const titleY = pairLabel(h) ? 290 : 260;
+  wrap(ctx, r.title, W - 200).forEach((l, i) => ctx.fillText(l, W / 2, titleY + i * 84));
 
   ctx.font = `700 200px ${serif}`;
   ctx.fillText(String(r.score), W / 2, 620);

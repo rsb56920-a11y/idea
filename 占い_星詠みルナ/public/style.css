@@ -300,3 +300,4 @@ h1, h2, h3 { font-family: var(--serif); }
 .legal-table th, .legal-table td { text-align: left; vertical-align: top; padding: 10px 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
 .legal-table th { width: 36%; color: var(--gold-2); font-weight: 700; font-size: 12px; }
 .unset { color: #ff9fb5; background: rgba(255, 159, 181, 0.12); border-radius: 4px; padding: 0 4px; }
+.pair-label { text-align: center; font-family: var(--serif); font-weight: 700; color: var(--pink); margin-bottom: 12px; padding: 12px; }
