@@ -1,6 +1,7 @@
 // 星詠みルナ — AI占い・診断(フロントエンド、依存なし)
 
-const PRICE = 300; // 詳細鑑定の価格(円)
+// 価格と決済方式はサーバーの設定(/api/status)に合わせる
+const pay = { price: 300, mode: "demo" };
 
 const MENUS = {
   today: { ico: "☀️", name: "今日の運勢", desc: "毎日かわる、あなただけの運勢" },
@@ -277,7 +278,7 @@ function renderResult(id) {
           : `<div class="lock-cover">
               <div>🔒 この先は<b>詳細鑑定</b>で読めます</div>
               <div class="muted" style="font-size:12px">${headingsOf(h).map(esc).join("・")}</div>
-              <div class="price">詳細鑑定 <b>¥${PRICE}</b></div>
+              <div class="price">詳細鑑定 <b>¥${pay.price}</b></div>
               <button class="btn gold" id="unlock">続きを読む</button>
             </div>`
       }
@@ -342,24 +343,53 @@ async function fetchDetail(h) {
   const res = await fetch("/api/reading/detail", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ ticket: h.ticket }),
+    body: JSON.stringify({ ticket: h.ticket, sessionId: h.sessionId }),
   });
   const data = await res.json();
+  if (res.status === 402) {
+    // 支払いが確認できない(未完了・取り消し)ので、もう一度購入できる状態に戻す
+    delete h.sessionId;
+    save();
+  }
   if (!res.ok) throw new Error(data.error || "エラーが発生しました");
   h.result.sections = data.sections;
   h.result.advice = data.advice;
 }
 
-// 決済はデモ。本番ではここを Stripe Checkout などにつなぐ
+async function unlock(h) {
+  await fetchDetail(h);
+  h.unlocked = true;
+  save();
+  toast("詳細鑑定をひらきました");
+  renderResult(h.id);
+}
+
+// Stripe の支払いページへ移動する(支払い後は ?paid=... 付きでこのサイトに戻ってくる)
+async function goCheckout(h) {
+  const res = await fetch("/api/checkout", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ticket: h.ticket, id: h.id }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "決済ページを開けませんでした");
+  location.href = data.url;
+}
+
 function openPaywall(h) {
+  // 支払い済みなのに鑑定の作成だけ失敗していた場合は、支払わずにやり直せる
+  const paid = pay.mode === "demo" || h.sessionId;
   const bg = document.createElement("div");
   bg.className = "modal-bg";
   bg.innerHTML = `<div class="modal panel">
-      <h3>🔮 詳細鑑定 ¥${PRICE}</h3>
+      <h3>🔮 詳細鑑定 ¥${pay.price}</h3>
       <p>${headingsOf(h).map(esc).join("・")}<br>をルナが詳しく鑑定します。</p>
       <p class="error" id="payErr"></p>
-      <p style="font-size:11px">※ 現在はデモ版のため、決済なしで表示されます。</p>
-      <button class="btn gold" id="pay">購入して読む(デモ)</button>
+      ${pay.mode === "demo" ? `<p style="font-size:11px">※ 現在はデモ版のため、決済なしで表示されます。</p>` : ""}
+      <button class="btn gold" id="pay">${
+        h.sessionId ? "購入済み・鑑定を表示する" : pay.mode === "demo" ? "購入して読む(デモ)" : "購入して読む"
+      }</button>
+      ${pay.mode === "stripe" && !h.sessionId ? `<p style="font-size:11px">クレジットカード・Apple Pay・Google Pay が使えます(Stripe の安全な決済ページに移動します)</p>` : ""}
       <button class="btn" id="cancel">閉じる</button>
     </div>`;
   document.body.appendChild(bg);
@@ -368,14 +398,11 @@ function openPaywall(h) {
     if (e.target.id !== "pay") return;
     const btn = e.target;
     btn.disabled = true;
-    btn.textContent = "ルナが詳しく鑑定しています…";
+    btn.textContent = paid ? "ルナが詳しく鑑定しています…" : "決済ページに移動しています…";
     try {
-      await fetchDetail(h);
-      h.unlocked = true;
-      save();
+      if (!paid) return await goCheckout(h);
+      await unlock(h);
       bg.remove();
-      toast("詳細鑑定をひらきました");
-      renderResult(h.id);
     } catch (err) {
       $("#payErr").textContent = err.message;
       btn.disabled = false;
@@ -466,4 +493,30 @@ async function shareImage(h, scoreLabel) {
   toast("画像を保存しました");
 }
 
-route();
+// Stripe の支払いから戻ってきた時(/?paid=セッションID&r=鑑定ID)
+async function handlePaidReturn() {
+  const q = new URLSearchParams(location.search);
+  const sessionId = q.get("paid");
+  const h = store.history.find((x) => x.id === q.get("r"));
+  if (!sessionId) return false;
+  history.replaceState(null, "", `/#/result/${h?.id || ""}`);
+  if (!h) return false;
+  h.sessionId = sessionId; // 鑑定の作成に失敗してもやり直せるよう先に保存
+  save();
+  app.innerHTML = `<div class="loading"><div class="orb"></div><p>ご購入ありがとうございます。<br>ルナが詳しく鑑定しています…</p></div>`;
+  try {
+    await unlock(h);
+  } catch (err) {
+    renderResult(h.id);
+    toast(err.message);
+  }
+  return true;
+}
+
+fetch("/api/status")
+  .then((r) => r.json())
+  .then((s) => Object.assign(pay, { price: s.price ?? pay.price, mode: s.payment ?? pay.mode }))
+  .catch(() => {})
+  .finally(async () => {
+    if (!(await handlePaidReturn())) route();
+  });

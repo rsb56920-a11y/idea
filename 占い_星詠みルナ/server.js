@@ -4,6 +4,7 @@ import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import Anthropic from "@anthropic-ai/sdk";
+import Stripe from "stripe";
 
 const PORT = Number(process.env.PORT) || 3000;
 const MODEL = process.env.CLAUDE_MODEL || "claude-opus-5";
@@ -11,8 +12,12 @@ const MODEL = process.env.CLAUDE_MODEL || "claude-opus-5";
 const RATE_LIMIT = Number(process.env.RATE_LIMIT_PER_HOUR) || 20;
 // 無料鑑定に付ける署名の鍵。本番では固定値を環境変数で渡す(再起動で変わると購入前の鑑定が開けなくなる)
 const SECRET = process.env.READING_SECRET || crypto.randomBytes(32).toString("hex");
-// 決済はまだデモ。"demo" の間は購入ボタンを押すだけで詳細鑑定が開く
-const PAYMENT_MODE = process.env.PAYMENT_MODE || "demo";
+// 決済: STRIPE_SECRET_KEY があれば Stripe、無ければデモ(購入ボタンを押すだけで開く)
+const stripe = process.env.STRIPE_SECRET_KEY ? new Stripe(process.env.STRIPE_SECRET_KEY) : null;
+const PAYMENT_MODE = process.env.PAYMENT_MODE || (stripe ? "stripe" : "demo");
+const PRICE_JPY = Number(process.env.PRICE_JPY) || 300;
+// Stripe の支払い後に戻ってくるURL(例: https://luna.example.com)。未設定ならアクセスされたホスト名を使う
+const PUBLIC_URL = process.env.PUBLIC_URL?.replace(/\/$/, "");
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "public");
 
 // APIキーが無い場合はデモモード(ランダムな定型文)で動く
@@ -200,9 +205,60 @@ function verify(ticket) {
   }
 }
 
-// 購入済みかどうか。Stripe をつないだら、ここで決済(Checkout Session)が完了しているかを確認する
-async function isPaid(/* req, payload */) {
-  return PAYMENT_MODE === "demo";
+const ticketHash = (ticket) => crypto.createHash("sha256").update(String(ticket)).digest("hex");
+
+// 購入済みかどうか。Stripe の場合は、その鑑定のために作った支払いが完了しているかを確認する
+async function isPaid(payload) {
+  if (PAYMENT_MODE === "demo") return true;
+  if (PAYMENT_MODE !== "stripe" || !stripe) return false;
+  const sessionId = String(payload.sessionId || "");
+  if (!sessionId.startsWith("cs_")) return false;
+  try {
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    // 別の鑑定の支払いを使い回せないよう、支払いに紐づけた鑑定と一致するかも確かめる
+    return session.payment_status === "paid" && session.metadata?.ticket_hash === ticketHash(payload.ticket);
+  } catch (err) {
+    console.error(err);
+    return false;
+  }
+}
+
+// Stripe の支払いページを作る
+async function handleCheckout(req, res) {
+  let payload;
+  try {
+    payload = await readJson(req);
+  } catch {
+    return json(res, 400, { error: "リクエストが不正です" });
+  }
+  if (PAYMENT_MODE !== "stripe" || !stripe) return json(res, 400, { error: "決済が設定されていません" });
+  const reading = verify(payload.ticket);
+  const id = String(payload.id || "");
+  if (!reading || !/^[a-z0-9]{1,20}$/.test(id)) return json(res, 400, { error: "鑑定データが無効です。もう一度占ってください。" });
+
+  const origin = PUBLIC_URL || `http://${req.headers.host}`;
+  try {
+    const session = await stripe.checkout.sessions.create({
+      mode: "payment",
+      line_items: [
+        {
+          price_data: {
+            currency: "jpy", // 円は小数なしなので 300 = ¥300
+            unit_amount: PRICE_JPY,
+            product_data: { name: `星詠みルナ 詳細鑑定(${reading.result.title})`.slice(0, 250) },
+          },
+          quantity: 1,
+        },
+      ],
+      metadata: { ticket_hash: ticketHash(payload.ticket) },
+      success_url: `${origin}/?paid={CHECKOUT_SESSION_ID}&r=${id}`,
+      cancel_url: `${origin}/#/result/${id}`,
+    });
+    json(res, 200, { url: session.url });
+  } catch (err) {
+    console.error(err);
+    json(res, 500, { error: "決済ページを開けませんでした。時間をおいてお試しください。" });
+  }
 }
 
 // ---------- HTTP ----------
@@ -296,7 +352,7 @@ async function handleDetail(req, res) {
   }
   const reading = verify(payload.ticket);
   if (!reading || !MENUS[reading.menu]) return json(res, 400, { error: "鑑定データが無効です。もう一度占ってください。" });
-  if (!(await isPaid(req, payload))) return json(res, 402, { error: "購入が確認できませんでした。" });
+  if (!(await isPaid(payload))) return json(res, 402, { error: "購入が確認できませんでした。" });
   if (client && rateLimited(clientIp(req))) {
     return json(res, 429, { error: "混み合っています。少し時間を空けてからお試しください。" });
   }
@@ -328,7 +384,10 @@ http
   .createServer((req, res) => {
     if (req.method === "POST" && req.url === "/api/reading") return handleReading(req, res);
     if (req.method === "POST" && req.url === "/api/reading/detail") return handleDetail(req, res);
-    if (req.method === "GET" && req.url === "/api/status") return json(res, 200, { demo: !client, payment: PAYMENT_MODE });
+    if (req.method === "POST" && req.url === "/api/checkout") return handleCheckout(req, res);
+    if (req.method === "GET" && req.url === "/api/status") {
+      return json(res, 200, { demo: !client, payment: PAYMENT_MODE, price: PRICE_JPY });
+    }
     if (req.method === "GET") return serveStatic(req, res);
     res.writeHead(405).end();
   })
