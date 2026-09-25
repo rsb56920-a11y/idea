@@ -1,4 +1,5 @@
 import http from "node:http";
+import crypto from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -8,6 +9,10 @@ const PORT = Number(process.env.PORT) || 3000;
 const MODEL = process.env.CLAUDE_MODEL || "claude-opus-5";
 // 1IPあたり1時間に占える回数(API料金の使いすぎ防止)
 const RATE_LIMIT = Number(process.env.RATE_LIMIT_PER_HOUR) || 20;
+// 無料鑑定に付ける署名の鍵。本番では固定値を環境変数で渡す(再起動で変わると購入前の鑑定が開けなくなる)
+const SECRET = process.env.READING_SECRET || crypto.randomBytes(32).toString("hex");
+// 決済はまだデモ。"demo" の間は購入ボタンを押すだけで詳細鑑定が開く
+const PAYMENT_MODE = process.env.PAYMENT_MODE || "demo";
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "public");
 
 // APIキーが無い場合はデモモード(ランダムな定型文)で動く
@@ -25,86 +30,98 @@ const MIME = {
 // ---------- 占いメニュー ----------
 const MENUS = {
   tarot: {
-    label: "タロット占い",
+    headings: ["過去", "現在", "未来", "相談への答え"],
     prompt: (i) =>
-      `タロット占い(スリーカード・スプレッド)の鑑定をしてください。
+      `タロット占い(スリーカード・スプレッド)の鑑定です。
 相談者の名前: ${i.name || "相談者"}
 相談内容: ${i.question || "(総合運)"}
 引いたカード:
 - 過去: ${i.cards?.[0] ?? "?"}
 - 現在: ${i.cards?.[1] ?? "?"}
 - 未来: ${i.cards?.[2] ?? "?"}
-sections は「過去」「現在」「未来」「相談への答え」の4つにしてください。各カードの意味(正位置/逆位置)を踏まえて解釈すること。`,
+各カードの意味(正位置/逆位置)を踏まえて解釈すること。`,
   },
   compat: {
-    label: "相性診断",
+    headings: ["二人の性格の組み合わせ", "うまくいくポイント", "すれ違いやすいポイント", "関係を深めるには"],
     prompt: (i) =>
-      `二人の相性診断をしてください。
+      `二人の相性診断です。
 一人目: ${i.name || "?"}(誕生日 ${i.birthday || "不明"})
 二人目: ${i.partner || "?"}(誕生日 ${i.partnerBirthday || "不明"})
 関係: ${i.relation || "恋愛"}
-score は相性度(0〜100)。sections は「二人の性格の組み合わせ」「うまくいくポイント」「すれ違いやすいポイント」「関係を深めるには」の4つ。`,
+score は相性度(0〜100)。`,
   },
   pastlife: {
-    label: "前世診断",
+    headings: ["前世の暮らし", "前世から受け継いだ才能", "今世での課題", "前世と縁のある人"],
     prompt: (i) =>
-      `前世診断をしてください。
+      `前世診断です。
 名前: ${i.name || "?"} / 誕生日: ${i.birthday || "不明"}
-title は「あなたの前世は〇〇」の形で、時代・国・職業が具体的に想像できる印象的なものに。score は「前世からの魂の輝き度」(0〜100)。
-sections は「前世の暮らし」「前世から受け継いだ才能」「今世での課題」「前世と縁のある人」の4つ。`,
+title は「あなたの前世は〇〇」の形で、時代・国・職業が具体的に想像できる印象的なものに。score は「前世からの魂の輝き度」(0〜100)。`,
   },
   today: {
-    label: "今日の運勢",
+    headings: ["恋愛運", "仕事・勉強運", "金運", "対人運"],
     prompt: (i) =>
-      `今日(${new Date().toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" })})の運勢を占ってください。
+      `今日(${new Date().toLocaleDateString("ja-JP", { timeZone: "Asia/Tokyo" })})の運勢です。
 名前: ${i.name || "?"} / 誕生日: ${i.birthday || "不明"} / 星座: ${i.zodiac || "不明"}
-score は総合運(0〜100)。sections は「恋愛運」「仕事・勉強運」「金運」「対人運」の4つ。`,
+score は総合運(0〜100)。`,
   },
 };
 
 const SYSTEM = `あなたは人気の占い師「ルナ」です。やさしく神秘的な語り口で、日本語で鑑定結果を書きます。
 - 相談者を前向きな気持ちにさせる内容にする。不安をあおる断定や、医療・法律・投資の具体的判断はしない。
-- 誰にでも当てはまる曖昧な文ではなく、入力内容(名前・誕生日・相談内容・カード)に具体的に触れる。
-- summary は無料で見られる部分。続きが気になるよう、核心の手前で終える(2〜3文)。
-- sections の本文はそれぞれ3〜5文。
-- lucky にはラッキーカラー・ラッキーアイテム・ラッキーナンバー(1〜99)を入れる。
-- shareText は SNS に投稿したくなる一言(40文字以内、絵文字1〜2個)。`;
+- 誰にでも当てはまる曖昧な文ではなく、入力内容(名前・誕生日・相談内容・カード)に具体的に触れる。`;
 
-const RESULT_SCHEMA = {
+// 無料鑑定: 短く安く作る
+const FREE_SCHEMA = {
   type: "object",
   properties: {
     title: { type: "string", description: "結果の見出し(20文字以内)" },
     score: { type: "integer", description: "0〜100" },
-    summary: { type: "string" },
+    summary: { type: "string", description: "無料で見られる要約。続きが気になるよう核心の手前で終える(2〜3文)" },
+    lucky: {
+      type: "object",
+      properties: {
+        color: { type: "string" },
+        item: { type: "string" },
+        number: { type: "integer", description: "1〜99" },
+      },
+      required: ["color", "item", "number"],
+      additionalProperties: false,
+    },
+    shareText: { type: "string", description: "SNSに投稿したくなる一言(40文字以内、絵文字1〜2個)" },
+  },
+  required: ["title", "score", "summary", "lucky", "shareText"],
+  additionalProperties: false,
+};
+
+// 詳細鑑定: 購入後にだけ作る
+const DETAIL_SCHEMA = {
+  type: "object",
+  properties: {
     sections: {
       type: "array",
       items: {
         type: "object",
-        properties: { heading: { type: "string" }, body: { type: "string" } },
+        properties: {
+          heading: { type: "string" },
+          body: { type: "string", description: "3〜5文" },
+        },
         required: ["heading", "body"],
         additionalProperties: false,
       },
     },
-    lucky: {
-      type: "object",
-      properties: { color: { type: "string" }, item: { type: "string" }, number: { type: "integer" } },
-      required: ["color", "item", "number"],
-      additionalProperties: false,
-    },
     advice: { type: "string", description: "最後のひとこと(1文)" },
-    shareText: { type: "string" },
   },
-  required: ["title", "score", "summary", "sections", "lucky", "advice", "shareText"],
+  required: ["sections", "advice"],
   additionalProperties: false,
 };
 
-async function aiReading(menu, input) {
+async function ask(content, schema) {
   const response = await client.beta.messages.create({
     model: MODEL,
     max_tokens: 16000,
     system: SYSTEM,
-    messages: [{ role: "user", content: MENUS[menu].prompt(input) }],
-    output_config: { effort: "low", format: { type: "json_schema", schema: RESULT_SCHEMA } },
+    messages: [{ role: "user", content }],
+    output_config: { effort: "low", format: { type: "json_schema", schema } },
     // 拒否された場合はサーバー側で自動的に別モデルへフォールバック
     betas: ["server-side-fallback-2026-07-01"],
     fallbacks: "default",
@@ -114,6 +131,22 @@ async function aiReading(menu, input) {
   if (!text) throw new Error(`empty response (stop_reason=${response.stop_reason})`);
   return JSON.parse(text);
 }
+
+const aiFree = (menu, input) =>
+  ask(`${MENUS[menu].prompt(input)}\n\nまず無料版の鑑定(見出し・スコア・要約・ラッキーアイテム)だけを作ってください。`, FREE_SCHEMA);
+
+const aiDetail = (menu, input, free) =>
+  ask(
+    `${MENUS[menu].prompt(input)}
+
+この相談者には、すでに無料版で次の鑑定を伝えています。内容と矛盾しないように、その続きとなる詳細鑑定を書いてください。
+見出し: ${free.title}
+スコア: ${free.score}
+要約: ${free.summary}
+
+sections は ${MENUS[menu].headings.map((h) => `「${h}」`).join("")} の${MENUS[menu].headings.length}つをこの順番で。要約で止めた「核心」をここで明かすこと。`,
+    DETAIL_SCHEMA,
+  );
 
 // ---------- デモモード ----------
 const DEMO = {
@@ -126,26 +159,50 @@ const DEMO = {
   colors: ["ラベンダー", "ミントグリーン", "ゴールド", "スカイブルー", "コーラルピンク"],
   items: ["手鏡", "ハンカチ", "レモンティー", "しおり", "小さなピアス"],
 };
-function demoReading(menu, input) {
-  const r = (arr) => arr[Math.floor(Math.random() * arr.length)];
-  const headings = {
-    tarot: ["過去", "現在", "未来", "相談への答え"],
-    compat: ["二人の性格の組み合わせ", "うまくいくポイント", "すれ違いやすいポイント", "関係を深めるには"],
-    pastlife: ["前世の暮らし", "前世から受け継いだ才能", "今世での課題", "前世と縁のある人"],
-    today: ["恋愛運", "仕事・勉強運", "金運", "対人運"],
-  }[menu];
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+function demoFree(menu, input) {
   return {
     title: DEMO.titles[menu],
     score: 60 + Math.floor(Math.random() * 38),
     summary: `${input.name || "あなた"}さん、星たちがあなたに静かに語りかけています。今はちょうど流れが変わる節目。けれど本当に大切なのは、このあとに見える"ある兆し"で……`,
-    sections: headings.map((h) => ({
+    lucky: { color: pick(DEMO.colors), item: pick(DEMO.items), number: 1 + Math.floor(Math.random() * 99) },
+    shareText: "占ってもらったら当たりすぎてた…🔮✨",
+  };
+}
+function demoDetail(menu) {
+  return {
+    sections: MENUS[menu].headings.map((h) => ({
       heading: h,
       body: `(デモ鑑定)${h}について、ここにAIの詳しい鑑定文が入ります。サーバーに ANTHROPIC_API_KEY を設定すると、入力内容に合わせた本物の鑑定になります。`,
     })),
-    lucky: { color: r(DEMO.colors), item: r(DEMO.items), number: 1 + Math.floor(Math.random() * 99) },
     advice: "迷ったときは、心が少し温かくなる方を選んでください。",
-    shareText: "占ってもらったら当たりすぎてた…🔮✨",
   };
+}
+
+// ---------- 鑑定チケット(署名付き) ----------
+// 無料鑑定の入力と結果に署名して返し、詳細鑑定の時にそのまま送り返してもらう。
+// サーバーに保存しなくても、改ざんされていない「本当に占った内容」だと確かめられる。
+function sign(data) {
+  const body = Buffer.from(JSON.stringify(data)).toString("base64url");
+  const mac = crypto.createHmac("sha256", SECRET).update(body).digest("base64url");
+  return `${body}.${mac}`;
+}
+function verify(ticket) {
+  const [body, mac] = String(ticket || "").split(".");
+  if (!body || !mac) return null;
+  const expected = crypto.createHmac("sha256", SECRET).update(body).digest("base64url");
+  if (mac.length !== expected.length || !crypto.timingSafeEqual(Buffer.from(mac), Buffer.from(expected))) return null;
+  try {
+    return JSON.parse(Buffer.from(body, "base64url").toString());
+  } catch {
+    return null;
+  }
+}
+
+// 購入済みかどうか。Stripe をつないだら、ここで決済(Checkout Session)が完了しているかを確認する
+async function isPaid(/* req, payload */) {
+  return PAYMENT_MODE === "demo";
 }
 
 // ---------- HTTP ----------
@@ -185,6 +242,22 @@ function clean(input) {
   return out;
 }
 
+function clientIp(req) {
+  return req.headers["x-forwarded-for"]?.split(",")[0].trim() || req.socket.remoteAddress;
+}
+
+function sendError(res, err) {
+  if (!(err instanceof UserError)) console.error(err);
+  const message =
+    err instanceof UserError
+      ? err.message
+      : err instanceof Anthropic.RateLimitError
+        ? "ただいま混み合っています。少し待ってからお試しください。"
+        : "鑑定中にエラーが発生しました。もう一度お試しください。";
+  json(res, 500, { error: message });
+}
+
+// 無料鑑定
 async function handleReading(req, res) {
   let payload;
   try {
@@ -194,22 +267,45 @@ async function handleReading(req, res) {
   }
   const { menu } = payload;
   if (!MENUS[menu]) return json(res, 400, { error: "不明なメニューです" });
-  const ip = req.headers["x-forwarded-for"]?.split(",")[0].trim() || req.socket.remoteAddress;
-  if (client && rateLimited(ip)) return json(res, 429, { error: "占いの回数が上限に達しました。1時間ほど空けてからお試しください。" });
+  if (client && rateLimited(clientIp(req))) {
+    return json(res, 429, { error: "占いの回数が上限に達しました。1時間ほど空けてからお試しください。" });
+  }
 
   const input = clean(payload.input);
   try {
-    const result = client ? await aiReading(menu, input) : demoReading(menu, input);
-    json(res, 200, { menu, result, demo: !client });
+    const result = client ? await aiFree(menu, input) : demoFree(menu, input);
+    json(res, 200, {
+      menu,
+      result,
+      headings: MENUS[menu].headings,
+      ticket: sign({ menu, input, result, at: Date.now() }),
+      demo: !client,
+    });
   } catch (err) {
-    console.error(err);
-    const message =
-      err instanceof UserError
-        ? err.message
-        : err instanceof Anthropic.RateLimitError
-          ? "ただいま混み合っています。少し待ってからお試しください。"
-          : "鑑定中にエラーが発生しました。もう一度お試しください。";
-    json(res, 500, { error: message });
+    sendError(res, err);
+  }
+}
+
+// 詳細鑑定(購入後)
+async function handleDetail(req, res) {
+  let payload;
+  try {
+    payload = await readJson(req);
+  } catch (err) {
+    return json(res, 400, { error: err instanceof UserError ? err.message : "リクエストが不正です" });
+  }
+  const reading = verify(payload.ticket);
+  if (!reading || !MENUS[reading.menu]) return json(res, 400, { error: "鑑定データが無効です。もう一度占ってください。" });
+  if (!(await isPaid(req, payload))) return json(res, 402, { error: "購入が確認できませんでした。" });
+  if (client && rateLimited(clientIp(req))) {
+    return json(res, 429, { error: "混み合っています。少し時間を空けてからお試しください。" });
+  }
+
+  try {
+    const detail = client ? await aiDetail(reading.menu, reading.input, reading.result) : demoDetail(reading.menu);
+    json(res, 200, detail);
+  } catch (err) {
+    sendError(res, err);
   }
 }
 
@@ -231,10 +327,11 @@ async function serveStatic(req, res) {
 http
   .createServer((req, res) => {
     if (req.method === "POST" && req.url === "/api/reading") return handleReading(req, res);
-    if (req.method === "GET" && req.url === "/api/status") return json(res, 200, { demo: !client });
+    if (req.method === "POST" && req.url === "/api/reading/detail") return handleDetail(req, res);
+    if (req.method === "GET" && req.url === "/api/status") return json(res, 200, { demo: !client, payment: PAYMENT_MODE });
     if (req.method === "GET") return serveStatic(req, res);
     res.writeHead(405).end();
   })
   .listen(PORT, () => {
-    console.log(`AI占い: http://localhost:${PORT} (${client ? `model=${MODEL}` : "デモモード"})`);
+    console.log(`AI占い: http://localhost:${PORT} (${client ? `model=${MODEL}` : "デモモード"}, 決済=${PAYMENT_MODE})`);
   });

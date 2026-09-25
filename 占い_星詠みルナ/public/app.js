@@ -207,7 +207,17 @@ async function runReading(menu, input) {
     });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || "エラーが発生しました");
-    const entry = { id: Date.now().toString(36), menu, input, result: data.result, demo: data.demo, unlocked: false, at: Date.now() };
+    const entry = {
+      id: Date.now().toString(36),
+      menu,
+      input,
+      result: data.result,
+      headings: data.headings,
+      ticket: data.ticket, // 詳細鑑定を買うときにサーバーへ送り返す
+      demo: data.demo,
+      unlocked: false,
+      at: Date.now(),
+    };
     store.history.unshift(entry);
     store.history = store.history.slice(0, 30);
     save();
@@ -255,13 +265,18 @@ function renderResult(id) {
       <div><small>ラッキーナンバー</small><b>${esc(r.lucky.number)}</b></div>
     </div>
     <div class="detail panel ${h.unlocked ? "" : "locked"}">
-      <div class="detail-body">${r.sections.map((s) => `<h3>${esc(s.heading)}</h3><p>${esc(s.body)}</p>`).join("")}</div>
+      <div class="detail-body">${
+        h.unlocked
+          ? r.sections.map((s) => `<h3>${esc(s.heading)}</h3><p>${esc(s.body)}</p>`).join("")
+          : // 購入前は本文を持っていないので、見出しとダミー文をぼかして見せる
+            headingsOf(h).map((t) => `<h3>${esc(t)}</h3><p>${TEASER}</p>`).join("")
+      }</div>
       ${
         h.unlocked
           ? ""
           : `<div class="lock-cover">
               <div>🔒 この先は<b>詳細鑑定</b>で読めます</div>
-              <div class="muted" style="font-size:12px">${r.sections.map((s) => esc(s.heading)).join("・")}</div>
+              <div class="muted" style="font-size:12px">${headingsOf(h).map(esc).join("・")}</div>
               <div class="price">詳細鑑定 <b>¥${PRICE}</b></div>
               <button class="btn gold" id="unlock">続きを読む</button>
             </div>`
@@ -317,26 +332,54 @@ async function sendInvite(h) {
   }
 }
 
+const TEASER = "ここにはルナによる詳しい鑑定が書かれています。あなたの星が示す本当の意味と、これから訪れる変化について。";
+// 古い履歴(全文を持っているもの)にも対応
+const headingsOf = (h) => h.headings || h.result.sections?.map((s) => s.heading) || [];
+
+async function fetchDetail(h) {
+  if (h.result.sections) return; // 以前の形式の履歴は全文を持っている
+  if (!h.ticket) throw new Error("この鑑定は開けません。もう一度占ってください。");
+  const res = await fetch("/api/reading/detail", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ ticket: h.ticket }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || "エラーが発生しました");
+  h.result.sections = data.sections;
+  h.result.advice = data.advice;
+}
+
 // 決済はデモ。本番ではここを Stripe Checkout などにつなぐ
 function openPaywall(h) {
   const bg = document.createElement("div");
   bg.className = "modal-bg";
   bg.innerHTML = `<div class="modal panel">
       <h3>🔮 詳細鑑定 ¥${PRICE}</h3>
-      <p>${h.result.sections.map((s) => esc(s.heading)).join("・")}<br>をルナが詳しく鑑定します。</p>
+      <p>${headingsOf(h).map(esc).join("・")}<br>をルナが詳しく鑑定します。</p>
+      <p class="error" id="payErr"></p>
       <p style="font-size:11px">※ 現在はデモ版のため、決済なしで表示されます。</p>
       <button class="btn gold" id="pay">購入して読む(デモ)</button>
       <button class="btn" id="cancel">閉じる</button>
     </div>`;
   document.body.appendChild(bg);
-  bg.onclick = (e) => {
-    if (e.target === bg || e.target.id === "cancel") bg.remove();
-    if (e.target.id === "pay") {
+  bg.onclick = async (e) => {
+    if (e.target === bg || e.target.id === "cancel") return bg.remove();
+    if (e.target.id !== "pay") return;
+    const btn = e.target;
+    btn.disabled = true;
+    btn.textContent = "ルナが詳しく鑑定しています…";
+    try {
+      await fetchDetail(h);
       h.unlocked = true;
       save();
       bg.remove();
       toast("詳細鑑定をひらきました");
       renderResult(h.id);
+    } catch (err) {
+      $("#payErr").textContent = err.message;
+      btn.disabled = false;
+      btn.textContent = "もう一度試す";
     }
   };
 }
