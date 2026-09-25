@@ -1,0 +1,14 @@
+{
+  "name": "ai-fortune",
+  "version": "0.1.0",
+  "description": "AI占い・診断アプリ",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.128.0"
+  }
+}

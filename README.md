@@ -37,3 +37,9 @@ public/
   style.css
   app.js         フロントエンド(フレームワークなし)
 ```
+
+---
+
+## ほかのアプリ
+
+- [`fortune/`](fortune/) — 星詠みルナ(AI占い・診断アプリ)
