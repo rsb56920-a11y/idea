@@ -18,7 +18,20 @@ const PAYMENT_MODE = process.env.PAYMENT_MODE || (stripe ? "stripe" : "demo");
 const PRICE_JPY = Number(process.env.PRICE_JPY) || 300;
 // Stripe の支払い後に戻ってくるURL(例: https://luna.example.com)。未設定ならアクセスされたホスト名を使う
 const PUBLIC_URL = process.env.PUBLIC_URL?.replace(/\/$/, "");
-const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "public");
+const APP_DIR = path.dirname(fileURLToPath(import.meta.url));
+const PUBLIC_DIR = path.join(APP_DIR, "public");
+
+// 特定商取引法の表記などに使うお店の情報(shop.json)。「【】」が残っていたら未記入
+async function loadShop() {
+  try {
+    const { _説明, ...shop } = JSON.parse(await readFile(path.join(APP_DIR, "shop.json"), "utf8"));
+    return shop;
+  } catch (err) {
+    console.error("shop.json を読めません:", err.message);
+    return {};
+  }
+}
+const isFilled = (shop) => Object.values(shop).length > 0 && !Object.values(shop).some((v) => String(v).includes("【"));
 
 // APIキーが無い場合はデモモード(ランダムな定型文)で動く
 const client = process.env.ANTHROPIC_API_KEY ? new Anthropic() : null;
@@ -385,6 +398,9 @@ http
     if (req.method === "POST" && req.url === "/api/reading") return handleReading(req, res);
     if (req.method === "POST" && req.url === "/api/reading/detail") return handleDetail(req, res);
     if (req.method === "POST" && req.url === "/api/checkout") return handleCheckout(req, res);
+    if (req.method === "GET" && req.url === "/api/shop") {
+      return loadShop().then((shop) => json(res, 200, { ...shop, price: PRICE_JPY }));
+    }
     if (req.method === "GET" && req.url === "/api/status") {
       return json(res, 200, { demo: !client, payment: PAYMENT_MODE, price: PRICE_JPY });
     }
@@ -393,4 +409,9 @@ http
   })
   .listen(PORT, () => {
     console.log(`AI占い: http://localhost:${PORT} (${client ? `model=${MODEL}` : "デモモード"}, 決済=${PAYMENT_MODE})`);
+    loadShop().then((shop) => {
+      if (!isFilled(shop)) {
+        console.warn("⚠️ shop.json に未記入の項目があります。本番で販売する前に、特定商取引法の表記に使う情報を書き換えてください。");
+      }
+    });
   });

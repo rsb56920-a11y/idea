@@ -288,3 +288,15 @@ h1, h2, h3 { font-family: var(--serif); }
 .invite-cta { margin-top: 16px; text-align: center; font-size: 14px; line-height: 1.8; border-color: var(--pink); }
 .invite-cta .muted { font-size: 12px; }
 .invite-cta .btn { margin-top: 12px; }
+
+/* ---------- 特定商取引法の表記など ---------- */
+.legal-links { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 14px; margin-top: 12px; }
+.legal-links a, a.link { color: var(--muted); text-decoration: underline; }
+.legal { font-size: 13px; line-height: 1.9; }
+.legal h3 { font-size: 14px; color: var(--gold); margin: 18px 0 4px; }
+.legal ul { padding-left: 1.2em; margin: 0; }
+.legal p { margin: 0 0 8px; }
+.legal-table { width: 100%; border-collapse: collapse; }
+.legal-table th, .legal-table td { text-align: left; vertical-align: top; padding: 10px 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
+.legal-table th { width: 36%; color: var(--gold-2); font-weight: 700; font-size: 12px; }
+.unset { color: #ff9fb5; background: rgba(255, 159, 181, 0.12); border-radius: 4px; padding: 0 4px; }

@@ -66,6 +66,7 @@ function route() {
   const [name, arg] = path.split("/");
   window.scrollTo(0, 0);
   if (name === "result") return renderResult(arg);
+  if (name === "legal") return renderLegal(arg);
   if (MENUS[name]) return renderForm(name, new URLSearchParams(query));
   renderHome();
 }
@@ -102,7 +103,8 @@ function renderHome() {
             .join("")}</div>`
         : ""
     }
-    <div class="footer">占い結果はAIが生成したエンターテインメントです。<br>大切な判断はご自身の意思で行ってください。</div>`;
+    <div class="footer">占い結果はAIが生成したエンターテインメントです。<br>大切な判断はご自身の意思で行ってください。
+      ${LEGAL_LINKS}</div>`;
   app.querySelectorAll(".menu").forEach((b) => (b.onclick = () => (location.hash = `#/${b.dataset.k}`)));
   app.querySelectorAll(".history-item").forEach((el) => (el.onclick = () => (location.hash = `#/result/${el.dataset.id}`)));
 }
@@ -296,7 +298,7 @@ function renderResult(id) {
       <button class="btn" id="img">画像を保存</button>
     </div>
     <div style="margin-top:12px"><button class="btn" onclick="location.hash='#/'">ほかの占いをする</button></div>
-    ${h.demo ? `<p class="footer">※ デモモードの鑑定です(APIキー未設定)</p>` : ""}`;
+    <div class="footer">${h.demo ? "※ デモモードの鑑定です(APIキー未設定)" : ""}${LEGAL_LINKS}</div>`;
 
   requestAnimationFrame(() => {
     const arc = $("#arc");
@@ -390,11 +392,12 @@ function openPaywall(h) {
         h.sessionId ? "購入済み・鑑定を表示する" : pay.mode === "demo" ? "購入して読む(デモ)" : "購入して読む"
       }</button>
       ${pay.mode === "stripe" && !h.sessionId ? `<p style="font-size:11px">クレジットカード・Apple Pay・Google Pay が使えます(Stripe の安全な決済ページに移動します)</p>` : ""}
+      <p style="font-size:11px">購入前に<a href="#/legal/tokushoho" class="link">特定商取引法に基づく表記</a>と<a href="#/legal/terms" class="link">利用規約</a>をご確認ください。デジタル商品のため、購入後の返品・キャンセルはできません。</p>
       <button class="btn" id="cancel">閉じる</button>
     </div>`;
   document.body.appendChild(bg);
   bg.onclick = async (e) => {
-    if (e.target === bg || e.target.id === "cancel") return bg.remove();
+    if (e.target === bg || e.target.id === "cancel" || e.target.classList.contains("link")) return bg.remove();
     if (e.target.id !== "pay") return;
     const btn = e.target;
     btn.disabled = true;
@@ -409,6 +412,89 @@ function openPaywall(h) {
       btn.textContent = "もう一度試す";
     }
   };
+}
+
+// ---------- 特定商取引法の表記・プライバシーポリシー・利用規約 ----------
+const LEGAL_LINKS = `<div class="legal-links">
+  <a href="#/legal/tokushoho">特定商取引法に基づく表記</a>
+  <a href="#/legal/privacy">プライバシーポリシー</a>
+  <a href="#/legal/terms">利用規約</a></div>`;
+
+let shopCache;
+const loadShop = () => (shopCache ??= fetch("/api/shop").then((r) => r.json()).catch(() => ({})));
+
+// 「【】」が残っている項目は未記入として目立たせる
+const v = (text) => {
+  const s = esc(text ?? "【未設定】");
+  return s.includes("【") ? `<span class="unset">${s}</span>` : s;
+};
+
+const LEGAL = {
+  tokushoho: {
+    title: "特定商取引法に基づく表記",
+    body: (s) => `<table class="legal-table">
+      <tr><th>販売事業者</th><td>${v(s.sellerName)}</td></tr>
+      <tr><th>運営統括責任者</th><td>${v(s.representative)}</td></tr>
+      <tr><th>所在地</th><td>${v(s.address)}</td></tr>
+      <tr><th>電話番号</th><td>${v(s.phone)}</td></tr>
+      <tr><th>メールアドレス</th><td>${v(s.email)}</td></tr>
+      <tr><th>販売URL</th><td>${v(s.url)}</td></tr>
+      <tr><th>販売価格</th><td>詳細鑑定 1回 ${esc(s.price ?? pay.price)}円(税込)</td></tr>
+      <tr><th>商品代金以外の必要料金</th><td>インターネット接続にかかる通信料はお客様のご負担となります。</td></tr>
+      <tr><th>支払方法</th><td>クレジットカード、Apple Pay、Google Pay(決済代行: Stripe)</td></tr>
+      <tr><th>支払時期</th><td>ご購入手続きの完了時にお支払いが確定します。</td></tr>
+      <tr><th>商品の引渡時期</th><td>決済完了後、ただちに画面上で詳細鑑定を表示します。</td></tr>
+      <tr><th>返品・キャンセル</th><td>デジタルコンテンツの性質上、購入後の返品・キャンセルはお受けできません。ただし、システムの不具合により詳細鑑定が表示されない場合は、再表示または返金にて対応いたします。</td></tr>
+      <tr><th>動作環境</th><td>最新版の Chrome・Safari・Edge などのブラウザ(JavaScript と Cookie・ローカルストレージが有効であること)</td></tr>
+    </table>`,
+  },
+  privacy: {
+    title: "プライバシーポリシー",
+    body: (s) => `
+      <p>${v(s.sellerName)}(以下「当方」)は、${esc(s.serviceName || "本サービス")}(以下「本サービス」)における利用者の情報を、以下のとおり取り扱います。</p>
+      <h3>1. 取得する情報</h3>
+      <ul><li>占いのために入力された情報(お名前・ニックネーム、生年月日、相談内容、相手の名前など)</li>
+      <li>アクセス時のIPアドレス(短時間の利用回数の制限のため)</li>
+      <li>決済に関する情報(決済の完了状況など。カード番号は決済代行会社 Stripe が取り扱い、当方は受け取りません)</li></ul>
+      <h3>2. 利用目的</h3>
+      <ul><li>占い結果の作成と表示</li><li>購入の確認と詳細鑑定の提供</li><li>不正利用の防止、お問い合わせへの対応</li></ul>
+      <h3>3. 外部サービスへの提供</h3>
+      <p>占い結果の作成のため、入力された情報を AI サービス提供事業者(Anthropic, PBC)に送信します。決済は Stripe, Inc. が行います。これら以外の第三者に、法令に基づく場合を除き個人情報を提供することはありません。</p>
+      <h3>4. 保存について</h3>
+      <p>入力内容と占い結果は、利用者のブラウザ内(ローカルストレージ)に保存されます。当方のサーバーには占いの内容を保存しません。IPアドレスは利用回数の制限のため一時的にのみ保持します。</p>
+      <h3>5. お問い合わせ</h3>
+      <p>個人情報の取り扱いに関するお問い合わせは ${v(s.email)} までご連絡ください。</p>
+      <p class="muted">制定日: ${v(s.effectiveDate)}</p>`,
+  },
+  terms: {
+    title: "利用規約",
+    body: (s) => `
+      <p>この規約は、${v(s.sellerName)}(以下「当方」)が提供する${esc(s.serviceName || "本サービス")}(以下「本サービス」)の利用条件を定めるものです。本サービスを利用した時点で、この規約に同意したものとみなします。</p>
+      <h3>第1条(本サービスの内容)</h3>
+      <p>本サービスは、AI が生成する占い・診断結果を提供するエンターテインメントです。結果の正確性・的中を保証するものではありません。健康・法律・金銭・進学などの重要な判断は、ご自身の責任で行い、必要に応じて専門家にご相談ください。</p>
+      <h3>第2条(有料サービス)</h3>
+      <p>詳細鑑定は有料です。価格・支払方法等は「特定商取引法に基づく表記」のとおりです。未成年の方は、保護者の同意を得たうえでご購入ください。</p>
+      <h3>第3条(返品・返金)</h3>
+      <p>デジタルコンテンツの性質上、購入後の返品・返金はできません。ただし、当方の不具合により詳細鑑定が表示されない場合はこの限りではありません。</p>
+      <h3>第4条(禁止事項)</h3>
+      <ul><li>他人になりすます行為、他人の個人情報を無断で入力する行為</li>
+      <li>本サービスへの過度な負荷、不正アクセス、決済の不正利用</li>
+      <li>占い結果を用いて他人を誹謗中傷する行為</li><li>その他、法令または公序良俗に反する行為</li></ul>
+      <h3>第5条(免責)</h3>
+      <p>当方は、本サービスの利用により生じた損害について、当方の故意または重大な過失による場合を除き、責任を負いません。本サービスは予告なく内容の変更・停止をすることがあります。</p>
+      <h3>第6条(規約の変更)</h3>
+      <p>当方は必要に応じて本規約を変更できるものとし、変更後の規約は本ページに掲載した時点で効力を生じます。</p>
+      <p class="muted">制定日: ${v(s.effectiveDate)}</p>`,
+  },
+};
+
+async function renderLegal(kind) {
+  const page = LEGAL[kind];
+  if (!page) return renderHome();
+  app.innerHTML = `${topbar(page.title)}<div class="panel legal"><p class="muted">読み込み中…</p></div>`;
+  const shop = await loadShop();
+  if (location.hash !== `#/legal/${kind}`) return; // 読み込み中に別ページへ移動した
+  $(".legal").innerHTML = page.body(shop);
 }
 
 // ---------- シェア画像 ----------
