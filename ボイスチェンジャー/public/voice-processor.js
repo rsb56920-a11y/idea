@@ -83,6 +83,8 @@ class VoiceProcessor extends AudioWorkletProcessor {
     this.gateDb = -120; // これより小さい音は消す(ノイズゲート)
     this.baseF0 = 0; // 測定したふだんの声の高さ(抑揚の中心)
     this.keepConsonants = true; // 子音(息の音)は高さを変えない
+    this.fastOnset = true; // 声の始まりをすぐに判定する
+    this.splitBand = true; // 2.5kHz 未満はいつも声の高さで動かす
     this.soft = 0; // やわらかさ(dB): 声の一番低い倍音(第1倍音)を強める。女性の声の特徴
     // 変換後の音量を元の声に合わせる(倍音の数が減ると小さく聞こえるため)
     this.inPow = 1e-6;
@@ -224,7 +226,8 @@ class VoiceProcessor extends AudioWorkletProcessor {
     // 1b. 声の高さと「声か息か」を自己相関で調べる(パワースペクトルの逆FFT = 自己相関)
     const { f0, clarity, power } = this.analyzePitch();
     const voiced = clarity > 0.5 && power > 1e-7;
-    this.voicing += ((voiced ? 1 : 0) - this.voicing) * 0.5;
+    // 声が始まったらすぐに「声」と判断する(遅れると、音節の頭で高さが遅れて上がる「しゃくり」が出る)
+    this.voicing = voiced && this.fastOnset ? 1 : this.voicing + ((voiced ? 1 : 0) - this.voicing) * 0.5;
     if (voiced) {
       const lf = Math.log(f0);
       if (!this.logMean) this.logMean = this.baseF0 ? Math.log(this.baseF0) : lf;
@@ -285,7 +288,7 @@ class VoiceProcessor extends AudioWorkletProcessor {
       pv *= Math.exp((this.inton - 1) * (Math.log(f0) - this.logMean));
       pv = Math.min(this.pitch * 1.5, Math.max(this.pitch / 1.5, pv));
     }
-    const p = this.keepConsonants ? 1 + (pv - 1) * this.voicing : pv;
+    const pc = this.keepConsonants ? 1 + (pv - 1) * this.voicing : pv;
     const f = this.formant;
     const warped = (k) => {
       const src = k / f;
@@ -300,6 +303,8 @@ class VoiceProcessor extends AudioWorkletProcessor {
       const lo = Math.max(2, kp - 3, i === 0 ? 0 : Math.ceil((peaks[i - 1] + kp) / 2));
       const hi = Math.min(kp + 3, i === np - 1 ? HALF : Math.floor((kp + peaks[i + 1]) / 2));
       const fp = anaFreq[kp];
+      // 声の倍音がある低い音域(2.5kHz 未満)はいつも声の高さで動かし、子音の雑音が多い高い音域だけ判定に従う
+      const p = this.splitBand && fp < 2500 ? pv : pc;
       const shift = Math.round((fp * p) / freqPerBin - kp);
       // 前のフレームで一番近かった山の回転を引き継ぎ、周波数の変化分だけ回す
       let prevTheta = 0;

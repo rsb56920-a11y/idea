@@ -64,7 +64,7 @@ class FFT {
 }
 
 // ---------- 1. 声の高さ(YIN法) ----------
-function trackPitch(x, sr, hop) {
+export function trackPitch(x, sr, hop, voicedThresh = 0.35, apScale = 1.5) {
   const W = Math.round(sr * 0.025); // 積分する長さ
   const minLag = Math.floor(sr / 500);
   const maxLag = Math.ceil(sr / 60);
@@ -142,8 +142,10 @@ function trackPitch(x, sr, hop) {
       const den = a - 2 * b + c;
       if (den !== 0) t = best + (0.5 * (a - c)) / den;
     }
-    f0[fr] = val < 0.35 && pow[fr] > 1e-6 ? sr / t : 0;
-    ap[fr] = Math.min(1, Math.max(0.02, val * 1.5));
+    const fHz = sr / t;
+    // 範囲外の値(放物線補間の失敗など)は無声あつかい
+    f0[fr] = val < voicedThresh && pow[fr] > 1e-6 && fHz >= 55 && fHz <= 550 ? fHz : 0;
+    ap[fr] = Math.min(1, Math.max(0.02, val * apScale));
   }
 
   // 後処理: 前後と比べて飛んでいる値(倍・半分の間違い)を直し、短すぎる有声区間は無声にする
@@ -225,7 +227,9 @@ export function convertHQ(input, sr, opts = {}) {
   const x = Float64Array.from(input);
   const hop = Math.round(sr * HOP_SEC);
 
-  const { f0, ap, pow } = trackPitch(x, sr, hop);
+  const { f0, ap, pow } = trackPitch(x, sr, hop, opts.voicedThresh ?? 0.35, opts.apScale ?? 0.3);
+  // 高い音域(3kHz〜)に足す息の割合。元の声と同じはっきりさになるよう、日本語の読み上げ音声で合わせた値
+  const hiNoise = opts.hiNoise ?? 0.1;
   onProgress(0.25);
   const env = envelopes(x, sr, hop, f0);
   onProgress(0.5);
@@ -325,7 +329,7 @@ export function convertHQ(input, sr, opts = {}) {
       const hz = k * binHz;
       // 高い周波数ほど息の成分が多い。息っぽさの設定でさらに足す
       const hi = Math.min(1, Math.max(0, (hz - 3000) / 5000));
-      let a = voiced ? Math.min(1, apBase + (1 - apBase) * (0.4 * hi + breath * 0.6 * Math.min(1, Math.max(0, (hz - 1200) / 1800)))) : 1;
+      let a = voiced ? Math.min(1, apBase + (1 - apBase) * (hiNoise * hi + breath * 0.6 * Math.min(1, Math.max(0, (hz - 1200) / 1800)))) : 1;
       a = Math.max(0.001, a);
       // 周期成分: 振幅を T/窓の和 にすると、分析時と同じ倍音の高さになる
       logP[k] = le + Math.log(Math.sqrt(1 - a * a) + 1e-6) + Math.log(T / WSUM);
@@ -415,5 +419,7 @@ export function convertHQ(input, sr, opts = {}) {
     y[n] *= sm[b0] * (1 - w2) + sm[b1] * w2;
   }
   onProgress(1);
+  // 念のため、計算できなかった値(NaN・無限大)は無音にする
+  for (let n = 0; n < y.length; n++) if (!Number.isFinite(y[n])) y[n] = 0;
   return Float32Array.from(y);
 }
