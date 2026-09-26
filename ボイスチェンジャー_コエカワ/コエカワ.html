@@ -193,6 +193,11 @@ select option { background: #1c1a36; }
 .trainer h3 { margin: 0 0 6px; font-size: 15px; }
 .trainer canvas { width: 100%; height: 160px; background: rgba(0, 0, 0, 0.3); border-radius: 12px; display: block; }
 .trainer .tip { font-size: 13px; line-height: 1.8; margin: 8px 0 0; }
+.lessons { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+.lessons h3 { margin: 0 0 6px; font-size: 15px; }
+.lesson-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 10px; }
+.lesson .phrase { font-size: 17px; font-weight: 800; background: rgba(0, 0, 0, 0.25); border-radius: 12px; padding: 12px 14px; margin: 10px 0; line-height: 1.7; }
+.stars { color: #ffd166; font-size: 20px; letter-spacing: 2px; margin-right: 6px; }
 .ref { margin-top: 14px; } .ref .btn { margin-right: 8px; }
 
 @media (max-width: 480px) {
@@ -311,6 +316,12 @@ select option { background: #1c1a36; }
           <p class="hint">紫の線 = 変換後のあなたの声の高さ、水色の帯 = なりたい声の自然な高さ。帯の中で、ほどよく上下するのが自然な話し方です。</p>
           <canvas id="trainCanvas"></canvas>
           <p id="trainTip" class="tip"></p>
+          <div class="lessons">
+            <h3>🎓 女声・両声類の話し方レッスン</h3>
+            <p class="hint">声の加工は「声の材料」を変えるだけ。女声に聞こえるかどうかは、話し方(高さの使い方)で大きく変わります。1つずつ、星3つを目指しましょう。</p>
+            <div class="lesson-tabs" id="lessonTabs"></div>
+            <div class="lesson" id="lesson"></div>
+          </div>
         </div>
         <div id="recs"></div>
       </div>
@@ -562,10 +573,10 @@ const asset = (name) => window.__KOEKAWA_ASSETS?.[name] || `./${name}`;
 //   target: 変換後の声の高さ(Hz)  formant: 平均的な男性の声から見た響きの倍率
 //   range: その声らしい抑揚の幅(半音の標準偏差)  breath: 息っぽさ
 const PRESETS = [
-  { id: "girl", e: "🎀", name: "女の子", desc: "明るくかわいい10〜20代の声", target: 250, formant: 1.2, range: 3.0, breath: 0.35, soft: 3, bright: 3, lowcut: 180 },
-  { id: "sister", e: "💄", name: "お姉さん", desc: "落ち着いた大人の女性の声", target: 205, formant: 1.14, range: 2.6, breath: 0.3, soft: 2.5, bright: 2, lowcut: 150 },
-  { id: "boy", e: "✨", name: "美少年", desc: "澄んだ中性的な少年の声", target: 175, formant: 1.1, range: 2.4, breath: 0.2, soft: 1.5, bright: 2, lowcut: 130 },
-  { id: "ryosei", e: "🌗", name: "両声類", desc: "男性が出す、女声に聞こえる声", target: 215, formant: 1.15, range: 2.8, breath: 0.3, soft: 3, bright: 2, lowcut: 150 },
+  { id: "girl", e: "🎀", name: "女の子", desc: "明るくかわいい10〜20代の声", target: 250, formant: 1.22, range: 3.4, breath: 0.35, soft: 3, bright: 3, lowcut: 180 },
+  { id: "sister", e: "💄", name: "お姉さん", desc: "落ち着いた大人の女性の声", target: 210, formant: 1.17, range: 3.0, breath: 0.3, soft: 2.5, bright: 2, lowcut: 150 },
+  { id: "boy", e: "✨", name: "美少年", desc: "澄んだ中性的な少年の声", target: 190, formant: 1.12, range: 2.4, breath: 0.2, soft: 1.5, bright: 2, lowcut: 130 },
+  { id: "ryosei", e: "🌗", name: "両声類", desc: "男性が出す、女声に聞こえる声", target: 220, formant: 1.17, range: 3.0, breath: 0.3, soft: 3, bright: 2, lowcut: 150 },
   { id: "shota", e: "🧢", name: "ショタ", desc: "元気な小学生くらいの男の子", target: 260, formant: 1.24, range: 3.2, breath: 0.25, soft: 3, bright: 3, lowcut: 180 },
   { id: "ikevo", e: "🎩", name: "低音イケボ", desc: "今より低く太い大人の男性の声", target: 0.85, formant: 0.94, range: 2.0, breath: 0.05, soft: 0, bright: -1, lowcut: 50, relative: true },
 ];
@@ -720,7 +731,8 @@ function applyPreset(id) {
   const ratio = p.relative ? p.target : p.target / myF0();
   state.pitch = Math.round(semis(ratio) * 2) / 2;
   // あなた専用: 声道がもともと短めの人は響きを少なめに、長めの人は多めに動かす(測定のぶれを考えて ±8% まで)
-  const tractAdj = state.tract ? Math.min(1.08, Math.max(0.92, state.tract / REF_TRACT)) : 1;
+  // (声道が短めの人でも響きは減らさない。減らすと女声・両声類が男っぽく残る、という実際の声での感想から)
+  const tractAdj = state.tract ? Math.min(1.08, Math.max(1, state.tract / REF_TRACT)) : 1;
   state.formant = Math.round(p.formant * tractAdj * 100) / 100;
   // あなた専用: 抑揚が小さめの人は、その声らしい幅まで広げる
   state.inton = state.range >= 0.8 ? Math.round(Math.min(1.4, Math.max(0.9, p.range / state.range)) * 20) / 20 : p.relative ? 1 : 1.15;
@@ -984,7 +996,7 @@ function startTrainer(ctx, node) {
     }
     trainer.raf = requestAnimationFrame(tick);
   };
-  trainer = { an, raf: requestAnimationFrame(tick) };
+  trainer = { an, pts, raf: requestAnimationFrame(tick) };
 }
 
 function stopTrainer() {
@@ -1390,6 +1402,104 @@ const vis = (() => {
     },
   };
 })();
+
+// ---------- 話し方レッスン ----------
+// 変換中に、お題の文を8秒読んでもらい、変換後の声の高さの使い方を採点する(星3つが目標)
+const LESSONS = [
+  {
+    id: "keep", title: "① 高さをキープ",
+    why: "男性っぽく聞こえるいちばんの原因は、話しているうちに声が低く戻ってしまうこと。",
+    how: "グラフの水色の帯の中に、紫の線をなるべく入れたまま話します。のどを締めず、「頭のてっぺんから声を出す」イメージで。",
+    phrase: "こんにちは、今日はいい天気ですね。お散歩に行きたいな。",
+    score(v, band) { const r = v.filter((q) => q.f >= band.lo && q.f <= band.hi).length / v.length; return { val: r, text: `帯の中 ${Math.round(r * 100)}%`, stars: r >= 0.75 ? 3 : r >= 0.55 ? 2 : r >= 0.35 ? 1 : 0 }; },
+  },
+  {
+    id: "melody", title: "② 抑揚を大きく",
+    why: "女性の話し声は、男性より高さの上下(抑揚)が大きく、歌うように聞こえます。平らだと機械っぽく・男性っぽくなります。",
+    how: "大事な言葉を少し高く、文の終わりはふわっと下げる。ジェットコースターのように、ゆったり上下させます。",
+    phrase: "えっ、ほんとに?すごーい!それ、わたしも見てみたいな。",
+    score(v, band) { const s = semisOf(v); const sd = Math.sqrt(s.reduce((a, b) => a + (b - avg(s)) ** 2, 0) / s.length); const need = band.range; return { val: sd, text: `抑揚 ${sd.toFixed(1)}半音(目安 ${need})`, stars: sd >= need ? 3 : sd >= need * 0.8 ? 2 : sd >= need * 0.6 ? 1 : 0 }; },
+  },
+  {
+    id: "end", title: "③ 語尾をやわらかく上げる",
+    why: "男性は語尾が下がって強く終わりがち。女性らしい話し方は、語尾が少し上がったり、ふわっと伸びたりします。",
+    how: "「〜だよ↗」「〜かな↗」のように、文の最後だけ少し上げて、やさしく終わります。",
+    phrase: "そうなんだ。今度いっしょに行こうね。楽しみにしてるね。",
+    score(v) { const segs = phrasesOf(v); const rises = segs.map((g) => { const s = semisOf(g); const n = s.length; return avg(s.slice(Math.floor(n * 0.75))) - avg(s.slice(Math.floor(n * 0.25), Math.floor(n * 0.75))); }); if (!rises.length) return { val: 0, text: "文が短すぎて判定できませんでした", stars: 0 }; const r = avg(rises); return { val: r, text: `語尾の上がり ${r >= 0 ? "+" : ""}${r.toFixed(1)}半音`, stars: r >= 1 ? 3 : r >= 0.4 ? 2 : r >= -0.3 ? 1 : 0 }; },
+  },
+  {
+    id: "start", title: "④ 明るく話し始める",
+    why: "話し始めが低いと、そこで「あ、男の人だ」と気づかれます。最初の一声がいちばん大事です。",
+    how: "文の最初の音を、少し高めに・明るく出します。「あっ」と気づいたときの声のイメージで。",
+    phrase: "おはよう!あのね、きのう面白いことがあったの。",
+    score(v) { const segs = phrasesOf(v); const s0 = segs.map((g) => { const s = semisOf(g); return avg(s.slice(0, Math.max(1, Math.floor(s.length * 0.2)))) - avg(s); }); if (!s0.length) return { val: 0, text: "文が短すぎて判定できませんでした", stars: 0 }; const r = avg(s0); return { val: r, text: `話し始めの高さ ${r >= 0 ? "+" : ""}${r.toFixed(1)}半音(文全体と比べて)`, stars: r >= 0.8 ? 3 : r >= 0.3 ? 2 : r >= -0.3 ? 1 : 0 }; },
+  },
+];
+const avg = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
+const semisOf = (v) => v.map((q) => 12 * Math.log2(q.f));
+// 声の区切り(0.25秒以上声がとぎれたら別の文)ごとに分ける。0.4秒未満の短いものは使わない
+function phrasesOf(v) {
+  const out = [];
+  let cur = [];
+  for (const q of v) {
+    if (cur.length && q.t - cur[cur.length - 1].t > 0.25) {
+      if (cur[cur.length - 1].t - cur[0].t >= 0.4) out.push(cur);
+      cur = [];
+    }
+    cur.push(q);
+  }
+  if (cur.length && cur[cur.length - 1].t - cur[0].t >= 0.4) out.push(cur);
+  return out;
+}
+const lessonBest = (() => {
+  try {
+    return JSON.parse(localStorage.getItem("koekawa:lessons")) || {};
+  } catch {
+    return {};
+  }
+})();
+let lessonId = "keep";
+let lessonTimer = null;
+function renderLessons() {
+  $("#lessonTabs").innerHTML = LESSONS.map((l) => `<button class="btn small ${l.id === lessonId ? "on" : ""}" data-id="${l.id}">${l.title} ${"★".repeat(lessonBest[l.id] || 0)}${"☆".repeat(3 - (lessonBest[l.id] || 0))}</button>`).join("");
+  document.querySelectorAll("#lessonTabs button").forEach((b) => (b.onclick = () => { lessonId = b.dataset.id; renderLessons(); }));
+  const l = LESSONS.find((x) => x.id === lessonId);
+  $("#lesson").innerHTML = `<p class="hint"><b>なぜ?</b> ${l.why}</p><p class="hint"><b>やり方:</b> ${l.how}</p>
+    <p class="phrase">「${l.phrase}」</p>
+    <button class="btn main" id="lessonGo">🎙 8秒間 読んでみる</button> <span id="lessonCount" class="hint"></span>
+    <p id="lessonResult" class="tip"></p>`;
+  $("#lessonGo").onclick = runLesson;
+}
+function runLesson() {
+  if (!trainer) return toast("先に「▶ 変換スタート」を押してください");
+  clearInterval(lessonTimer);
+  const l = LESSONS.find((x) => x.id === lessonId);
+  const t0 = trainer.pts.length ? trainer.pts[trainer.pts.length - 1].t : 0;
+  let left = 8;
+  $("#lessonCount").textContent = `のこり ${left} 秒…`;
+  $("#lessonResult").textContent = "";
+  lessonTimer = setInterval(() => {
+    left--;
+    $("#lessonCount").textContent = left > 0 ? `のこり ${left} 秒…` : "";
+    if (left > 0) return;
+    clearInterval(lessonTimer);
+    if (!trainer) return;
+    const v = trainer.pts.filter((q) => q.t > t0 && q.f);
+    if (v.length < 30) return ($("#lessonResult").innerHTML = "声があまり聞こえませんでした。マイクに近づいて、もう一度どうぞ。");
+    const r = l.score(v, targetBand());
+    if (r.stars > (lessonBest[l.id] || 0)) {
+      lessonBest[l.id] = r.stars;
+      try {
+        localStorage.setItem("koekawa:lessons", JSON.stringify(lessonBest));
+      } catch {}
+    }
+    const msg = ["もう少し!やり方を読んで、もう一度", "いい調子!あと少し", "上手!かなり自然です", "完璧!次のレッスンへ"][r.stars];
+    $("#lessonResult").innerHTML = `<span class="stars">${"★".repeat(r.stars)}${"☆".repeat(3 - r.stars)}</span> ${r.text}<br>${msg}`;
+    renderLessons();
+    $("#lessonResult").innerHTML = `<span class="stars">${"★".repeat(r.stars)}${"☆".repeat(3 - r.stars)}</span> ${r.text}<br>${msg}`;
+  }, 1000);
+}
+renderLessons();
 
 </script>
 </body>

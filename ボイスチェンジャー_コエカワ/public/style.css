@@ -185,6 +185,11 @@ select option { background: #1c1a36; }
 .trainer h3 { margin: 0 0 6px; font-size: 15px; }
 .trainer canvas { width: 100%; height: 160px; background: rgba(0, 0, 0, 0.3); border-radius: 12px; display: block; }
 .trainer .tip { font-size: 13px; line-height: 1.8; margin: 8px 0 0; }
+.lessons { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+.lessons h3 { margin: 0 0 6px; font-size: 15px; }
+.lesson-tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0 10px; }
+.lesson .phrase { font-size: 17px; font-weight: 800; background: rgba(0, 0, 0, 0.25); border-radius: 12px; padding: 12px 14px; margin: 10px 0; line-height: 1.7; }
+.stars { color: #ffd166; font-size: 20px; letter-spacing: 2px; margin-right: 6px; }
 .ref { margin-top: 14px; } .ref .btn { margin-right: 8px; }
 
 @media (max-width: 480px) {
