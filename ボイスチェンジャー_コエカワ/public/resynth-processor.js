@@ -148,6 +148,10 @@ class ResynthProcessor extends AudioWorkletProcessor {
     ];
     this.gain = 1;
     this.gateGain = 1;
+    this.fast = 1;
+    this.hIn = new Float64Array(3);
+    this.hOut = new Float64Array(3);
+    this.hIdx = 0;
   }
 
   rand() {
@@ -223,7 +227,18 @@ class ResynthProcessor extends AudioWorkletProcessor {
       const target = Math.min(8, Math.max(0.1, Math.sqrt(st.inPow / (st.outPow + 1e-12))));
       st.gain += (target - st.gain) * 0.1;
     }
-    const g1 = st.gain * this.gateGain;
+    // 音の切れ目をくっきり: 直近15msの入力の音量と比べて、出力が大きすぎるときだけすばやく絞る。
+    // 響きを43msの窓で調べるため、話し終わりに声が尾を引き(言葉の輪郭がぼやけ)やすいのを防ぐ
+    this.hIn[this.hIdx % 3] = pi;
+    this.hOut[this.hIdx % 3] = po;
+    this.hIdx++;
+    const eIn = this.hIn[0] + this.hIn[1] + this.hIn[2];
+    const eOut = (this.hOut[0] + this.hOut[1] + this.hOut[2]) * st.gain * st.gain;
+    // いまの5msだけで見て急に静かになったとき(12dB以上の余裕をみて)も、すぐ絞る
+    const now1 = 4 * Math.sqrt(pi / (po * st.gain * st.gain + 1e-12));
+    const tgt = Math.min(1, Math.sqrt(eIn / (eOut + 1e-12)), now1);
+    this.fast += (tgt - this.fast) * (tgt < this.fast ? 0.6 : 0.35);
+    const g1 = st.gain * this.gateGain * this.fast;
     const g0 = this.gain;
     for (let n = t0; n < c; n++) {
       const g = g0 + ((g1 - g0) * (n - t0)) / this.hop;
