@@ -18,6 +18,8 @@ const PRESETS = [
   { id: "shota", e: "🧢", name: "ショタ", desc: "元気な小学生くらいの男の子", target: 260, formant: 1.24, range: 3.2, breath: 0.25, soft: 3, bright: 3, lowcut: 180 },
   { id: "ikevo", e: "🎩", name: "低音イケボ", desc: "今より低く太い大人の男性の声", target: 0.85, formant: 0.94, range: 2.0, breath: 0.05, soft: 0, bright: -1, lowcut: 50, relative: true },
 ];
+// 見た目: プリセットごとのカードの色(色相)
+const HUES = { girl: 330, sister: 290, boy: 190, ryosei: 260, shota: 30, ikevo: 220 };
 // 声道の長さの基準(平均的な男性を測った時の値)。この測り方での基準値
 const REF_TRACT = 16.5;
 
@@ -161,6 +163,7 @@ function showF0() {
 function applyPreset(id) {
   const p = PRESETS.find((x) => x.id === id) || PRESETS[0];
   state.preset = p.id;
+  if (live) setStatus(true);
   const ratio = p.relative ? p.target : p.target / myF0();
   state.pitch = Math.round(semis(ratio) * 2) / 2;
   // あなた専用: 声道がもともと短めの人は響きを少なめに、長めの人は多めに動かす(測定のぶれを考えて ±8% まで)
@@ -179,7 +182,7 @@ function applyPreset(id) {
 
 function renderPresets() {
   $("#presets").innerHTML = PRESETS.map(
-    (p) => `<button class="preset ${p.id === state.preset ? "active" : ""}" data-id="${p.id}"><span class="e">${p.e}</span><b>${p.name}</b><small>${p.desc}</small></button>`,
+    (p) => `<button class="preset ${p.id === state.preset ? "active" : ""}" data-id="${p.id}" style="--h:${HUES[p.id] ?? 200}"><span class="e">${p.e}</span><b>${p.name}</b><small>${p.desc}</small></button>`,
   ).join("");
   document.querySelectorAll(".preset").forEach((b) => (b.onclick = () => applyPreset(b.dataset.id)));
   renderMine();
@@ -365,6 +368,8 @@ async function startLive() {
   live = { ctx, stream, recDest, ...chain };
   if ($("#sink").value) await ctx.setSinkId?.($("#sink").value).catch(() => {});
   startTrainer(ctx, chain.out);
+  vis.attach(ctx, chain.out);
+  setStatus(true);
   // モニター: 変換した声を、別の出力先(ヘッドホン)でも鳴らす。配信で CABLE に送りながら自分でも聞ける
   live.monitor = new Audio();
   live.monitor.srcObject = recDest.stream;
@@ -503,6 +508,8 @@ $("#monSink").onchange = updateMonitor;
 function stopLive() {
   if (!live) return;
   stopTrainer();
+  vis.detach();
+  setStatus(false);
   live.monitor?.pause();
   if (live.recorder?.state === "recording") live.recorder.stop();
   live.stream.getTracks().forEach((t) => t.stop());
@@ -747,3 +754,77 @@ if ((state.preset === "custom" || state.preset.startsWith("mine:")) && saved.cus
   applyPreset(state.preset);
 }
 listSinks();
+
+// ---------- 見た目: ヘッダーのビジュアライザーと状態表示 ----------
+// 待機中はゆっくり波打ち、変換中は変換後の声の周波数に合わせて光る。30fps・小さなキャンバスで軽く。
+function setStatus(on) {
+  document.body.classList.toggle("live", on);
+  const p = PRESETS.find((x) => x.id === state.preset);
+  $("#statusText").textContent = on ? `LIVE ${p ? p.name : "マイ設定"}` : "待機中";
+}
+const vis = (() => {
+  const cv = $("#vis");
+  const c = cv.getContext("2d");
+  let an = null, data = null, last = 0, level = 0;
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const BARS = 48;
+  const smooth = new Float32Array(BARS);
+  function size() {
+    const r = cv.getBoundingClientRect();
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    cv.width = Math.round(r.width * dpr);
+    cv.height = Math.round(r.height * dpr);
+  }
+  size();
+  addEventListener("resize", size);
+  function frame(t) {
+    requestAnimationFrame(frame);
+    if (t - last < 33 || document.hidden) return;
+    last = t;
+    const W = cv.width, H = cv.height;
+    c.clearRect(0, 0, W, H);
+    if (an) an.getByteFrequencyData(data);
+    const gap = W / BARS;
+    const bw = gap * 0.55;
+    let sum = 0;
+    for (let i = 0; i < BARS; i++) {
+      let v;
+      if (an) {
+        // 声のおいしい帯域(80Hz〜6kHz)を対数で並べる
+        const f = 80 * Math.pow(6000 / 80, i / (BARS - 1));
+        const bin = Math.min(data.length - 1, Math.round((f / (an.context.sampleRate / 2)) * data.length));
+        v = data[bin] / 255;
+      } else {
+        v = reduce ? 0.12 : 0.1 + 0.08 * Math.sin(t / 700 + i * 0.35) + 0.05 * Math.sin(t / 430 - i * 0.6);
+      }
+      smooth[i] += (v - smooth[i]) * 0.35;
+      sum += smooth[i];
+      const h = Math.max(H * 0.06, smooth[i] * H * 0.9);
+      const x = i * gap + (gap - bw) / 2;
+      const g = c.createLinearGradient(0, H / 2 - h / 2, 0, H / 2 + h / 2);
+      const hue = 190 + (i / BARS) * 140;
+      g.addColorStop(0, `hsla(${hue},95%,70%,0.95)`);
+      g.addColorStop(1, `hsla(${hue + 30},90%,60%,0.6)`);
+      c.fillStyle = g;
+      const r = bw / 2;
+      c.beginPath();
+      c.roundRect ? c.roundRect(x, H / 2 - h / 2, bw, h, r) : c.rect(x, H / 2 - h / 2, bw, h);
+      c.fill();
+    }
+    level += (sum / BARS - level) * 0.2;
+    document.documentElement.style.setProperty("--level", Math.min(1, level * 2.2).toFixed(3));
+  }
+  requestAnimationFrame(frame);
+  return {
+    attach(ctx, node) {
+      an = ctx.createAnalyser();
+      an.fftSize = 1024;
+      an.smoothingTimeConstant = 0.6;
+      node.connect(an);
+      data = new Uint8Array(an.frequencyBinCount);
+    },
+    detach() {
+      an = null;
+    },
+  };
+})();

@@ -3,15 +3,23 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#101418" />
+  <meta name="theme-color" content="#0b0a1a" />
   <title>コエカワ | ナチュラルボイスチェンジャー</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <main id="app">
-    <header>
-      <h1>🎙️ コエカワ <small>ナチュラルボイスチェンジャー</small></h1>
-      <p class="muted">声の高さと響きを別々に動かして、自然な女声・少年声・両声類ボイスに。すべてこのパソコンの中で処理します(音声はどこにも送信しません)。</p>
+    <header class="hero">
+      <div class="brand">
+        <div class="logo" aria-hidden="true"><span></span><span></span><span></span><span></span><span></span></div>
+        <div>
+          <h1>コエカワ</h1>
+          <p class="tag">NATURAL VOICE CHANGER</p>
+        </div>
+        <div class="status" id="status"><i></i><span id="statusText">待機中</span></div>
+      </div>
+      <canvas id="vis" aria-hidden="true"></canvas>
+      <p class="muted lead">声の高さと響きを別々に動かして、自然な女声・少年声・両声類ボイスに。<br />すべてこのパソコンの中で処理します(音声はどこにも送信しません)。</p>
     </header>
 
     <section class="card" id="step1">
