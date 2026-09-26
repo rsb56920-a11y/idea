@@ -71,3 +71,7 @@ input[type="range"] { width: 100%; accent-color: #22d3ee; margin-top: 6px; }
 .mine .del { padding: 7px 10px 7px 4px; color: var(--muted); }
 .btn.small { padding: 7px 12px; font-size: 13px; }
 header h1 small { font-size: 13px; color: var(--muted); font-weight: 400; margin-left: 6px; }
+.trainer { margin-top: 14px; background: #20272f; border-radius: 12px; padding: 12px 14px; }
+.trainer h3 { margin: 0 0 4px; font-size: 15px; }
+.trainer canvas { width: 100%; height: 160px; background: #151a20; border-radius: 10px; display: block; }
+.trainer .tip { font-size: 13px; line-height: 1.8; margin: 8px 0 0; }

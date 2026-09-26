@@ -332,6 +332,7 @@ async function startLive() {
   chain.out.connect(recDest);
   live = { ctx, stream, recDest, ...chain };
   if ($("#sink").value) await ctx.setSinkId?.($("#sink").value).catch(() => {});
+  startTrainer(ctx, chain.out);
   // モニター: 変換した声を、別の出力先(ヘッドホン)でも鳴らす。配信で CABLE に送りながら自分でも聞ける
   live.monitor = new Audio();
   live.monitor.srcObject = recDest.stream;
@@ -341,6 +342,118 @@ async function startLive() {
   $("#compare").disabled = false;
   $("#rec").disabled = false;
   toast("変換中です。ヘッドホンで自分の声を確認してください");
+}
+
+// ---------- 話し方トレーナー ----------
+// 変換後の声の高さをグラフにして、なりたい声の高さの範囲(帯)と抑揚の大きさを比べる。
+// 声の加工は「材料」を変えるだけなので、話し方(高さの使い方)が自然さを大きく左右する。
+let trainer = null;
+const TRAIN_SEC = 8; // グラフに表示する秒数
+
+function targetBand() {
+  const p = PRESETS.find((x) => x.id === state.preset);
+  // なりたい声の高さの目安: プリセットの高さ(マイ設定などは今の設定から計算)の ±3半音
+  const center = p && !p.relative ? p.target : myF0() * 2 ** (state.pitch / 12);
+  const range = p?.range ?? 2.6;
+  return { lo: center * 2 ** (-3 / 12), hi: center * 2 ** (3 / 12), center, range };
+}
+
+function startTrainer(ctx, node) {
+  const an = ctx.createAnalyser();
+  an.fftSize = 2048;
+  node.connect(an);
+  const buf = new Float32Array(an.fftSize);
+  const pts = []; // { t, f }
+  const cv = $("#trainCanvas");
+  $("#trainer").hidden = false;
+  const t0 = performance.now();
+  let lastAdvice = 0;
+  const tick = () => {
+    if (!trainer) return;
+    const t = (performance.now() - t0) / 1000;
+    an.getFloatTimeDomainData(buf);
+    let f = detectF0(buf, ctx.sampleRate) || 0;
+    // 急な飛び(倍・半分の読み違い)は捨てる: 直近の値の中央値から5半音以上離れたもの
+    const recent = pts.filter((q) => q.f && q.t > t - 0.3).map((q) => q.f).sort((a, b) => a - b);
+    if (f && recent.length >= 3 && Math.abs(12 * Math.log2(f / recent[recent.length >> 1])) > 5) f = 0;
+    pts.push({ t, f });
+    while (pts.length && pts[0].t < t - 30) pts.shift();
+    drawTrainer(cv, pts, t);
+    if (t - lastAdvice > 3) {
+      lastAdvice = t;
+      $("#trainTip").innerHTML = trainerAdvice(pts.filter((q) => q.t > t - 8 && q.f));
+    }
+    trainer.raf = requestAnimationFrame(tick);
+  };
+  trainer = { an, raf: requestAnimationFrame(tick) };
+}
+
+function stopTrainer() {
+  if (trainer) cancelAnimationFrame(trainer.raf);
+  trainer = null;
+}
+
+function drawTrainer(cv, pts, now) {
+  const dpr = window.devicePixelRatio || 1;
+  const W = cv.clientWidth * dpr;
+  const H = cv.clientHeight * dpr;
+  if (cv.width !== W) cv.width = W;
+  if (cv.height !== H) cv.height = H;
+  const g = cv.getContext("2d");
+  g.clearRect(0, 0, W, H);
+  // 縦軸: 60〜500Hz を半音(対数)で
+  const lo = Math.log2(60);
+  const hi = Math.log2(500);
+  const y = (f) => H - ((Math.log2(f) - lo) / (hi - lo)) * H;
+  const band = targetBand();
+  g.fillStyle = "rgba(34, 211, 238, 0.15)";
+  g.fillRect(0, y(band.hi), W, y(band.lo) - y(band.hi));
+  g.strokeStyle = "rgba(34, 211, 238, 0.5)";
+  g.setLineDash([6 * dpr, 6 * dpr]);
+  g.beginPath();
+  g.moveTo(0, y(band.center));
+  g.lineTo(W, y(band.center));
+  g.stroke();
+  g.setLineDash([]);
+  g.fillStyle = "#95a1ae";
+  g.font = `${11 * dpr}px sans-serif`;
+  for (const hz of [100, 200, 300, 400]) g.fillText(`${hz}Hz`, 4 * dpr, y(hz) - 2 * dpr);
+  // 声の高さの線
+  g.strokeStyle = "#a78bfa";
+  g.lineWidth = 3 * dpr;
+  g.beginPath();
+  let pen = false;
+  let lastT = -1;
+  for (const q of pts) {
+    const x = W - ((now - q.t) / TRAIN_SEC) * W;
+    if (x < 0 || !q.f) continue;
+    // 0.15秒までの途切れはつなぐ(声のとぎれではなく、読み取れなかっただけのことが多い)
+    if (!pen || q.t - lastT > 0.15) g.moveTo(x, y(q.f));
+    else g.lineTo(x, y(q.f));
+    pen = true;
+    lastT = q.t;
+  }
+  g.stroke();
+}
+
+// 直近8秒の声から、話し方のアドバイスを作る
+function trainerAdvice(v) {
+  if (v.length < 15) return "話しかけてみてください。変換後の声の高さがグラフに出ます。";
+  const band = targetBand();
+  const semis = v.map((q) => 12 * Math.log2(q.f));
+  const mean = semis.reduce((a, b) => a + b) / semis.length;
+  const sd = Math.sqrt(semis.reduce((a, b) => a + (b - mean) ** 2, 0) / semis.length);
+  const center = 12 * Math.log2(band.center);
+  const inBand = v.filter((q) => q.f >= band.lo && q.f <= band.hi).length / v.length;
+  const tips = [];
+  if (mean < center - 2) tips.push("🔽 声が<b>低め</b>です。地声を少しだけ高めに、明るく話してみましょう");
+  else if (mean > center + 2) tips.push("🔼 声が<b>高め</b>です。少し落ち着いて話すと自然になります");
+  if (sd < band.range * 0.6) tips.push("〰️ 抑揚が<b>小さめ</b>です。文の最初を高く、語尾をやわらかく上げ下げしてみましょう");
+  else if (sd > band.range * 1.6) tips.push("🎢 抑揚が<b>大きすぎ</b>ます。少しおだやかに");
+  const score = Math.round(inBand * 100);
+  return `<b>自然さの目安:${score}%</b>(帯の中にいた時間) / 抑揚 ${sd.toFixed(1)}半音(目安 ${band.range})<br>${
+    tips.length ? tips.join("<br>") : "✨ いい感じです!この話し方をキープ"
+  }`;
 }
 
 async function updateMonitor() {
@@ -357,6 +470,7 @@ $("#monSink").onchange = updateMonitor;
 
 function stopLive() {
   if (!live) return;
+  stopTrainer();
   live.monitor?.pause();
   if (live.recorder?.state === "recording") live.recorder.stop();
   live.stream.getTracks().forEach((t) => t.stop());

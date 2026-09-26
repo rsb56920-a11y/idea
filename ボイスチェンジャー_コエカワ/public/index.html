@@ -92,6 +92,12 @@
           </ol>
           <p class="hint">遅れは約0.05〜0.1秒です。口の動き(アバター)と少しずれる場合は、OBS の「音声の詳細プロパティ」で映像側を同期オフセットで遅らせると合います。</p>
         </details>
+        <div id="trainer" class="trainer" hidden>
+          <h3>🎯 話し方トレーナー</h3>
+          <p class="hint">紫の線 = 変換後のあなたの声の高さ、水色の帯 = なりたい声の自然な高さ。帯の中で、ほどよく上下するのが自然な話し方です。</p>
+          <canvas id="trainCanvas"></canvas>
+          <p id="trainTip" class="tip"></p>
+        </div>
         <div id="recs"></div>
       </div>
 
