@@ -52,7 +52,7 @@
             <option value="-55">ふつう</option>
             <option value="-45">強め(雑音が多い部屋)</option>
           </select></label>
-        <label class="check"><input type="checkbox" id="keepConsonants" /> 子音(さ行・た行などの息の音)は高さを変えない(おすすめ)</label>
+        <label class="check"><input type="checkbox" id="keepConsonants" /> 子音(さ行・た行などの息の音)は高さを変えない(おすすめ・軽量方式のみ。作り直し方式は自動)</label>
         <p class="hint">プリセットを選ぶと、測ったあなたの声に合わせて全部の値が自動で決まります。目安:響きを上げすぎると子どもっぽく、下げると大人っぽく・太くなります。女声は「変換後の高さ 200〜260Hz、響き 1.15〜1.22」あたりが自然です(地声が低い人ほど半音の数は大きくなります)。</p>
       </details>
     </section>
@@ -66,6 +66,11 @@
 
       <div class="pane" id="pane-live">
         <p class="warn">⚠️ <b>必ずヘッドホン・イヤホン</b>をつけてください。スピーカーだと声がループして「キーン」と鳴ります。</p>
+        <label class="inline">変換の方式
+          <select id="rtEngine">
+            <option value="resynth">作り直し(おすすめ・自然で高さが正確)</option>
+            <option value="light">軽量(古いパソコン・スマホ向け)</option>
+          </select></label>
         <div class="row wrap">
           <button class="btn main" id="liveStart">▶ 変換スタート</button>
           <button class="btn" id="compare" disabled>🔁 元の声と聞きくらべ</button>
@@ -100,7 +105,7 @@
         <label class="inline">変換の方式
           <select id="engine">
             <option value="hq">高品質(声を作り直す・おすすめ)</option>
-            <option value="rt">リアルタイムと同じ方式</option>
+            <option value="rt">リアルタイムと同じ方式(上で選んだ方式)</option>
           </select></label>
         <p class="hint">高品質は、声の高さを前後も見て正確に調べ、声を1から作り直します。少し時間がかかりますが、濁りや響きのにじみが出にくくなります。聞きくらべて自然な方を選んでください。</p>
         <div class="row wrap">

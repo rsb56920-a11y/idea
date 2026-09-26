@@ -44,6 +44,7 @@ const state = {
   gate: saved.gate ?? -55,
   keepConsonants: saved.keepConsonants ?? true,
   mine: saved.mine || [], // マイ設定 [{ name, pitch, formant, ... }]
+  rtEngine: saved.rtEngine || "resynth", // リアルタイムの方式: resynth(作り直し・おすすめ) / light(軽量)
 };
 const CUSTOM_KEYS = ["pitch", "formant", "bright", "lowcut", "breath", "inton", "soft"];
 const persist = () => {
@@ -58,6 +59,7 @@ const persist = () => {
         gate: state.gate,
         keepConsonants: state.keepConsonants,
         mine: state.mine,
+        rtEngine: state.rtEngine,
         custom: Object.fromEntries(CUSTOM_KEYS.map((k) => [k, state[k]])),
       }),
     );
@@ -262,6 +264,12 @@ $("#gate").onchange = (e) => {
   persist();
   pushParams();
 };
+$("#rtEngine").value = state.rtEngine;
+$("#rtEngine").onchange = (e) => {
+  state.rtEngine = e.target.value;
+  persist();
+  if (live) toast("方式を変えました。いったん止めて、もう一度スタートすると切り替わります");
+};
 $("#keepConsonants").onchange = (e) => {
   state.keepConsonants = e.target.checked;
   persist();
@@ -281,8 +289,15 @@ const vcParams = () => ({
 });
 
 // ---------- 音の流れ: 入力 → 声の変換 → 低音カット → 明るさ → 出力 ----------
+// リアルタイムの変換部品を読み込む(両方の方式)
+async function loadEngines(ctx) {
+  await ctx.audioWorklet.addModule(asset("voice-processor.js"));
+  await ctx.audioWorklet.addModule(asset("resynth-processor.js"));
+}
+
 function buildChain(ctx, source) {
-  const vc = new AudioWorkletNode(ctx, "voice-processor", { processorOptions: vcParams() });
+  const name = state.rtEngine === "light" ? "voice-processor" : "resynth-processor";
+  const vc = new AudioWorkletNode(ctx, name, { processorOptions: vcParams() });
   const hp = new BiquadFilterNode(ctx, { type: "highpass", frequency: state.lowcut, Q: 0.7 });
   const shelf = new BiquadFilterNode(ctx, { type: "highshelf", frequency: 3500, gain: state.bright });
   source.connect(vc).connect(hp).connect(shelf);
@@ -310,7 +325,7 @@ async function startLive() {
     return toast("マイクを使えません。ブラウザのマイク許可を確認してください");
   }
   const ctx = new AudioContext({ latencyHint: "interactive" });
-  await ctx.audioWorklet.addModule(asset("voice-processor.js"));
+  await loadEngines(ctx);
   const chain = buildChain(ctx, ctx.createMediaStreamSource(stream));
   const recDest = ctx.createMediaStreamDestination();
   chain.out.connect(ctx.destination);
@@ -510,7 +525,7 @@ async function renderOffline(buf, onProgress = () => {}, engine = $("#engine").v
     const shelf = new BiquadFilterNode(ctx, { type: "highshelf", frequency: 3500, gain: state.bright });
     src.connect(hp).connect(shelf).connect(ctx.destination);
   } else {
-    await ctx.audioWorklet.addModule(asset("voice-processor.js"));
+    await loadEngines(ctx);
     buildChain(ctx, src).out.connect(ctx.destination);
   }
   src.start();

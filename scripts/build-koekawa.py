@@ -35,6 +35,7 @@ def js_string(s):
 assets = {
     "voice-processor.js": read("voice-processor.js"),
     "capture-processor.js": read("capture-processor.js"),
+    "resynth-processor.js": read("resynth-processor.js"),
     # Worker は import を使わない普通のスクリプトにする(高品質エンジンを前にくっつける)
     "hq-worker.js": strip_exports(read("hq-engine.js")) + "\n" + strip_imports(read("hq-worker.js")),
 }
