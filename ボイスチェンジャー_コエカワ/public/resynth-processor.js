@@ -79,6 +79,9 @@ class ResynthProcessor extends AudioWorkletProcessor {
     this.voicedThresh = 0.35; // YIN の値がこれより小さければ声(有声)
     this.apScale = 0.3; // 息(非周期成分)の見積もりの強さ
     this.hiNoise = 0.1; // 3kHz より上に足す息の割合
+    // 人の声の「ゆらぎ」。声帯は1回ごとに少しずつ間隔(ジッター)と強さ(シマー)がゆれている。
+    // 完全に規則正しいパルスは機械っぽく(ブザーっぽく)聞こえるので、ごく少しだけ足す(1 = ふつう、0 = なし)
+    this.humanize = 1;
     Object.assign(this, options?.processorOptions);
     this.port.onmessage = (e) => Object.assign(this, e.data);
 
@@ -137,6 +140,7 @@ class ResynthProcessor extends AudioWorkletProcessor {
     this.lastVoicedAt = -1e9;
     this.logMean = 0;
     this.seed = 12345;
+    this.flutter = 0;
     // 音量合わせ(子音・声で別々)
     this.gs = [
       { inPow: 1e-6, outPow: 1e-6, gain: 1 },
@@ -289,7 +293,12 @@ class ResynthProcessor extends AudioWorkletProcessor {
       if (den !== 0) t = best + (0.5 * (a - cc)) / den;
     }
     let f0 = sampleRate / t;
-    if (!(val < this.voicedThresh && f0 >= 55 && f0 <= 550)) f0 = 0;
+    // 声の続き: 直前(30ms以内)まで声で、高さもほぼ同じ(±2半音)なら、少しゆるい基準でも声とみなす。
+    // 母音の途中で YIN の値が一瞬ゆれて「無声」になると、声の中に雑音がブツッと混ざってガサついて聞こえるため
+    const cont =
+      this.lastVoicedF0 && c - this.lastVoicedAt < sampleRate * 0.03 && Math.abs(Math.log2(f0 / this.lastVoicedF0)) < 2 / 12;
+    const thresh = cont ? this.voicedThresh + 0.15 : this.voicedThresh;
+    if (!(val < thresh && f0 >= 55 && f0 <= 550)) f0 = 0;
     // 直前の声と比べて、倍・半分に飛んだものは直す(未来は見られないので過去だけで判断)
     if (f0 && this.lastVoicedF0 && c - this.lastVoicedAt < sampleRate * 0.05) {
       const r = f0 / this.lastVoicedF0;
@@ -373,7 +382,16 @@ class ResynthProcessor extends AudioWorkletProcessor {
       fout = fin * this.pitch * (this.logMean ? Math.exp((this.inton - 1) * (Math.log(fin) - this.logMean)) : 1);
       fout = Math.min(1000, Math.max(40, fout));
     }
-    const T = voiced ? sr / fout : sr * 0.005;
+    let T = voiced ? sr / fout : sr * 0.005;
+    // ゆらぎ: 間隔 ±0.3%(標準偏差)、強さ ±0.25dB。ゆっくりした揺れ(フラッター)も少し
+    let shimmer = 0;
+    if (voiced && this.humanize > 0) {
+      const g1 = 2 * (this.rand() + this.rand() + this.rand());
+      const g2 = 2 * (this.rand() + this.rand() + this.rand());
+      this.flutter += (2 * (this.rand() + this.rand() + this.rand()) - this.flutter) * 0.02;
+      T *= 1 + this.humanize * (0.003 * g1 + 0.002 * this.flutter);
+      shimmer = (this.humanize * 0.25 * g2 * Math.LN10) / 20;
+    }
     const apBase = voiced ? this.apPrev * (1 - w) + this.apCur * w : 1;
     const binHz = sr / N;
     const WSUM = N / 2;
@@ -393,7 +411,7 @@ class ResynthProcessor extends AudioWorkletProcessor {
         ? Math.min(1, apBase + (1 - apBase) * (this.hiNoise * hi + this.breath * 0.6 * Math.min(1, Math.max(0, (hz - 1200) / 1800))))
         : 1;
       a = Math.max(0.001, a);
-      logP[k] = le + Math.log(Math.sqrt(1 - a * a) + 1e-6) + Math.log(T / WSUM);
+      logP[k] = le + Math.log(Math.sqrt(1 - a * a) + 1e-6) + Math.log(T / WSUM) + shimmer;
       if (this.soft && voiced && hz < fout * 1.5) {
         const bell = hz < fout ? 1 : 1 - (hz - fout) / (fout * 0.5);
         logP[k] += (this.soft * Math.max(0, bell) * Math.LN10) / 20;

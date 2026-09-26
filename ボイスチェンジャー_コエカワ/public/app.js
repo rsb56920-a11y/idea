@@ -44,6 +44,7 @@ const state = {
   inton: 1,
   soft: 0,
   gate: saved.gate ?? -55,
+  humanize: saved.humanize ?? 1, // 声のゆらぎ(ジッター・シマー)。0 = なし、1 = ふつう
   keepConsonants: saved.keepConsonants ?? true,
   mine: saved.mine || [], // マイ設定 [{ name, pitch, formant, ... }]
   rtEngine: saved.rtEngine || "resynth", // リアルタイムの方式: resynth(作り直し・おすすめ) / light(軽量)
@@ -59,6 +60,7 @@ const persist = () => {
         tract: state.tract,
         preset: state.preset,
         gate: state.gate,
+        humanize: state.humanize,
         keepConsonants: state.keepConsonants,
         mine: state.mine,
         rtEngine: state.rtEngine,
@@ -273,6 +275,8 @@ function renderControls() {
   $("#soft").value = state.soft;
   $("#inton").value = state.inton;
   $("#gate").value = state.gate;
+  $("#humanize").value = state.humanize;
+  $("#humanizeVal").textContent = state.humanize === 0 ? "なし" : `${state.humanize.toFixed(2)}(1 がふつう)`;
   $("#keepConsonants").checked = state.keepConsonants;
   const after = Math.round(myF0() * 2 ** (state.pitch / 12));
   $("#pitchVal").textContent = `${state.pitch > 0 ? "+" : ""}${state.pitch} 半音(約 ${after}Hz に)`;
@@ -294,6 +298,12 @@ for (const id of ["pitch", "formant", "bright", "lowcut", "breath", "inton", "so
   });
 }
 
+$("#humanize").addEventListener("input", (e) => {
+  state.humanize = Number(e.target.value);
+  persist();
+  renderControls();
+  pushParams();
+});
 $("#gate").onchange = (e) => {
   state.gate = Number(e.target.value);
   persist();
@@ -321,6 +331,7 @@ const vcParams = () => ({
   keepConsonants: state.keepConsonants,
   baseF0: state.f0 || 0,
   soft: state.soft,
+  humanize: state.humanize,
 });
 
 // ---------- 音の流れ: 入力 → 声の変換 → 低音カット → 明るさ → 出力 ----------
