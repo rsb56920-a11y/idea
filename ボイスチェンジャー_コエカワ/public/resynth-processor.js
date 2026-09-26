@@ -297,7 +297,10 @@ class ResynthProcessor extends AudioWorkletProcessor {
     // 母音の途中で YIN の値が一瞬ゆれて「無声」になると、声の中に雑音がブツッと混ざってガサついて聞こえるため
     const cont =
       this.lastVoicedF0 && c - this.lastVoicedAt < sampleRate * 0.03 && Math.abs(Math.log2(f0 / this.lastVoicedF0)) < 2 / 12;
-    const thresh = cont ? this.voicedThresh + 0.15 : this.voicedThresh;
+    // 話し始め: その人のふだんの高さ(±5半音)に近いときだけ、少しゆるい基準で声とみなす。
+    // 1オクターブの読み違い(12半音ずれ)はここで弾かれるので、出だしが裏返らない
+    const nearUsual = !cont && this.logMean && Math.abs(Math.log(f0) - this.logMean) < (5 / 12) * Math.LN2;
+    const thresh = cont ? this.voicedThresh + 0.15 : nearUsual ? this.voicedThresh + 0.1 : this.voicedThresh;
     if (!(val < thresh && f0 >= 55 && f0 <= 550)) f0 = 0;
     // 直前の声と比べて、倍・半分に飛んだものは直す(未来は見られないので過去だけで判断)
     if (f0 && this.lastVoicedF0 && c - this.lastVoicedAt < sampleRate * 0.05) {
