@@ -78,6 +78,11 @@ class VoiceProcessor extends AudioWorkletProcessor {
     this.formant = 1;
     this.mix = 1; // 1 = 変換後の声だけ
     this.bypass = false;
+    this.breath = 0; // 息っぽさ 0〜1
+    this.inton = 1; // 抑揚の強さ(1 = そのまま、1.2 = 上がり下がりを2割大きく)
+    this.gateDb = -120; // これより小さい音は消す(ノイズゲート)
+    this.baseF0 = 0; // 測定したふだんの声の高さ(抑揚の中心)
+    this.keepConsonants = true; // 子音(息の音)は高さを変えない
     // 変換後の音量を元の声に合わせる(倍音の数が減ると小さく聞こえるため)
     this.inPow = 1e-6;
     this.outPow = 1e-6;
@@ -110,8 +115,22 @@ class VoiceProcessor extends AudioWorkletProcessor {
     this.prevPeaks = new Int32Array(HALF);
     this.prevTheta = new Float64Array(HALF);
     this.prevCount = 0;
-    // ケプストラムで残す係数の数。小さいほど包絡がなめらか(倍音の細かい山を拾わない)
+    this.ac = new Float64Array(N);
+    this.logA = new Float64Array(HALF + 1);
+    // 窓の自己相関(自己相関を窓の形で割って偏りをなくすため)
+    this.wac = new Float64Array(N);
+    for (let l = 0; l < N; l++) {
+      let s = 0;
+      for (let i = 0; i + l < N; i++) s += this.win[i] * this.win[i + l];
+      this.wac[l] = s;
+    }
+    this.voicing = 0; // 有声(声帯が振動している)らしさ 0〜1
+    this.logMean = 0; // 声の高さの平均(対数)
+    this.gateGain = 1;
+    // 息の音(子音)のときに、ケプストラムで残す係数の数。小さいほど包絡がなめらか
     this.lifter = Math.max(20, Math.round(sampleRate / 1000));
+    // ノイズゲートが閉じている間は音量合わせを止めるための印
+    this.gateOpen = true;
   }
 
   process(inputs, outputs) {
@@ -132,7 +151,8 @@ class VoiceProcessor extends AudioWorkletProcessor {
         const a = 1 / (0.3 * sampleRate);
         this.inPow += (dry * dry - this.inPow) * a;
         this.outPow += (wet * wet - this.outPow) * a;
-        const target = this.inPow > 1e-7 ? Math.min(4, Math.max(0.5, Math.sqrt(this.inPow / (this.outPow + 1e-12)))) : this.gain;
+        const target =
+          this.inPow > 1e-7 && this.gateOpen ? Math.min(4, Math.max(0.5, Math.sqrt(this.inPow / (this.outPow + 1e-12)))) : this.gain;
         this.gain += (target - this.gain) * a * 4;
         wet *= this.gain;
         out[i] = wet * this.mix + dry * (1 - this.mix);
@@ -145,6 +165,36 @@ class VoiceProcessor extends AudioWorkletProcessor {
     }
     for (let c = 1; c < output.length; c++) output[c].set(out);
     return true;
+  }
+
+  // 分析済みの re/im(窓をかけた入力のFFT)から、声の高さ・はっきりさ・音の強さを出す
+  analyzePitch() {
+    const { re, im, ac, wac, fft } = this;
+    const aRe = this.cRe;
+    const aIm = this.cIm;
+    for (let k = 0; k < N; k++) {
+      aRe[k] = re[k] * re[k] + im[k] * im[k];
+      aIm[k] = 0;
+    }
+    fft.transform(aRe, aIm, true);
+    for (let l = 0; l < N; l++) ac[l] = aRe[l] / N / wac[l];
+    const power = ac[0];
+    if (power <= 0) return { f0: 0, clarity: 0, power: 0 };
+    const minLag = Math.floor(sampleRate / 500);
+    const maxLag = Math.min(HALF - 1, Math.floor(sampleRate / 60));
+    let mx = 0;
+    for (let l = minLag; l <= maxLag; l++) if (ac[l] > mx) mx = ac[l];
+    // 最大値の9割を超える最初の山 = 本当の周期(倍の周期を拾わないため)
+    for (let l = minLag + 1; l < maxLag; l++) {
+      if (ac[l] > 0.9 * mx && ac[l] >= ac[l - 1] && ac[l] >= ac[l + 1]) {
+        const a = ac[l - 1];
+        const b = ac[l];
+        const c = ac[l + 1];
+        const shift = (a - c) / (2 * (a - 2 * b + c) || 1);
+        return { f0: sampleRate / (l + shift), clarity: b / power, power };
+      }
+    }
+    return { f0: 0, clarity: 0, power };
   }
 
   frame() {
@@ -170,23 +220,47 @@ class VoiceProcessor extends AudioWorkletProcessor {
       if (mag > maxMag) maxMag = mag;
     }
 
-    // 2. スペクトル包絡(ケプストラムを低い方だけ残してなめらかにする)
-    for (let k = 0; k <= HALF; k++) {
-      cRe[k] = Math.log(anaMag[k] + 1e-9);
-      cIm[k] = 0;
+    // 1b. 声の高さと「声か息か」を自己相関で調べる(パワースペクトルの逆FFT = 自己相関)
+    const { f0, clarity, power } = this.analyzePitch();
+    const voiced = clarity > 0.5 && power > 1e-7;
+    this.voicing += ((voiced ? 1 : 0) - this.voicing) * 0.5;
+    if (voiced) {
+      const lf = Math.log(f0);
+      if (!this.logMean) this.logMean = this.baseF0 ? Math.log(this.baseF0) : lf;
+      this.logMean += (lf - this.logMean) * 0.01;
     }
-    for (let k = HALF + 1; k < N; k++) {
-      cRe[k] = cRe[N - k];
-      cIm[k] = 0;
+
+    // 1c. ノイズゲート(話していない時の雑音を消す)
+    const db = 10 * Math.log10(power + 1e-20);
+    const gateTarget = db > this.gateDb ? 1 : 0.03;
+    this.gateGain += (gateTarget - this.gateGain) * (gateTarget > this.gateGain ? 0.7 : 0.2);
+    this.gateOpen = this.gateGain > 0.5;
+
+    // 2. スペクトル包絡(True Envelope 法: ケプストラムでなめらかにしては山に合わせて持ち上げる、を繰り返す)
+    //    ただのケプストラムだと倍音と倍音の谷に引っぱられて包絡が低く・ぼやけるので、響きがこもる
+    //    なめらかさは声の高さに合わせる(周期の半分まで)。低い声ほど細かく響きを拾える
+    //    (合成音での評価: 固定48だと倍音のずれ 4.1dB → 声に合わせると 1.0dB)
+    const L = voiced ? Math.max(24, Math.min(HALF - 1, Math.round((0.5 * sampleRate) / f0))) : this.lifter;
+    const logA = this.logA;
+    for (let k = 0; k <= HALF; k++) logA[k] = Math.log(anaMag[k] + 1e-9);
+    for (let iter = 0; iter < 4; iter++) {
+      for (let k = 0; k <= HALF; k++) {
+        cRe[k] = logA[k];
+        cIm[k] = 0;
+      }
+      for (let k = HALF + 1; k < N; k++) {
+        cRe[k] = cRe[N - k];
+        cIm[k] = 0;
+      }
+      fft.transform(cRe, cIm, true);
+      for (let k = 0; k < N; k++) {
+        const keep = k < L || k > N - L;
+        cRe[k] = keep ? cRe[k] / N : 0;
+        cIm[k] = keep ? cIm[k] / N : 0;
+      }
+      fft.transform(cRe, cIm, false);
+      if (iter < 3) for (let k = 0; k <= HALF; k++) logA[k] = Math.max(logA[k], cRe[k]);
     }
-    fft.transform(cRe, cIm, true);
-    const L = this.lifter;
-    for (let k = 0; k < N; k++) {
-      const keep = k < L || k > N - L;
-      cRe[k] = keep ? cRe[k] / N : 0;
-      cIm[k] = keep ? cIm[k] / N : 0;
-    }
-    fft.transform(cRe, cIm, false);
     for (let k = 0; k <= HALF; k++) env[k] = Math.exp(cRe[k]);
 
     // 3. 倍音の山(ピーク)を探す
@@ -204,7 +278,13 @@ class VoiceProcessor extends AudioWorkletProcessor {
     const outIm = this.outIm;
     outRe.fill(0);
     outIm.fill(0);
-    const p = this.pitch;
+    // 声の部分だけ高さを変える。子音(息の音)は元の高さのまま、響きだけ変える
+    let pv = this.pitch;
+    if (voiced && this.inton !== 1 && this.logMean) {
+      pv *= Math.exp((this.inton - 1) * (Math.log(f0) - this.logMean));
+      pv = Math.min(this.pitch * 1.5, Math.max(this.pitch / 1.5, pv));
+    }
+    const p = this.keepConsonants ? 1 + (pv - 1) * this.voicing : pv;
     const f = this.formant;
     const warped = (k) => {
       const src = k / f;
@@ -214,8 +294,10 @@ class VoiceProcessor extends AudioWorkletProcessor {
     const newTheta = this.newTheta;
     for (let i = 0; i < np; i++) {
       const kp = peaks[i];
-      const lo = i === 0 ? 0 : Math.ceil((peaks[i - 1] + kp) / 2);
-      const hi = i === np - 1 ? HALF : Math.floor((kp + peaks[i + 1]) / 2);
+      // 山の範囲: となりの山との中間まで。ただし窓の主な山の幅(±3ビン)を超えない
+      //   (広く取ると、0Hz付近の残りかすや別の倍音のすそまで回転させてしまい、ありもしない音が出る)
+      const lo = Math.max(2, kp - 3, i === 0 ? 0 : Math.ceil((peaks[i - 1] + kp) / 2));
+      const hi = Math.min(kp + 3, i === np - 1 ? HALF : Math.floor((kp + peaks[i + 1]) / 2));
       const fp = anaFreq[kp];
       const shift = Math.round((fp * p) / freqPerBin - kp);
       // 前のフレームで一番近かった山の回転を引き継ぎ、周波数の変化分だけ回す
@@ -231,16 +313,39 @@ class VoiceProcessor extends AudioWorkletProcessor {
       let theta = prevTheta + (2 * Math.PI * (fp * p - fp) * HOP) / sampleRate;
       theta -= 2 * Math.PI * Math.round(theta / (2 * Math.PI));
       newTheta[i] = theta;
-      const c = Math.cos(theta);
-      const sn = Math.sin(theta);
+      // 響きの掛け替えは山ごとに1つの倍率で(ビンごとに変えると山の形がくずれ、すその雑音が増える)
+      const tp = kp + shift;
+      if (tp < 1 || tp > HALF) continue;
+      const g = warped(tp) / env[kp];
+      const c = Math.cos(theta) * g;
+      const sn = Math.sin(theta) * g;
       for (let k = lo; k <= hi; k++) {
         const t = k + shift;
         if (t < 0 || t > HALF) continue;
-        const g = warped(t) / env[k];
-        outRe[t] += (re[k] * c - im[k] * sn) * g;
-        outIm[t] += (re[k] * sn + im[k] * c) * g;
+        outRe[t] += re[k] * c - im[k] * sn;
+        outIm[t] += re[k] * sn + im[k] * c;
       }
     }
+    // 息っぽさ: 声の部分に、響きの形に沿った息の音(1.2kHz より上)を足す
+    if (this.breath > 0 && this.voicing > 0.1) {
+      const amt = this.breath * this.voicing * 0.12;
+      for (let k = 0; k <= HALF; k++) {
+        const hz = k * freqPerBin;
+        if (hz < 1200) continue;
+        const ramp = Math.min(1, (hz - 1200) / 1800);
+        const m = amt * ramp * warped(k);
+        const ph = Math.random() * 2 * Math.PI;
+        outRe[k] += m * Math.cos(ph);
+        outIm[k] += m * Math.sin(ph);
+      }
+    }
+    if (this.gateGain < 0.999) {
+      for (let k = 0; k <= HALF; k++) {
+        outRe[k] *= this.gateGain;
+        outIm[k] *= this.gateGain;
+      }
+    }
+
     this.prevPeaks.set(peaks.subarray(0, np));
     this.prevTheta.set(newTheta.subarray(0, np));
     this.prevCount = np;

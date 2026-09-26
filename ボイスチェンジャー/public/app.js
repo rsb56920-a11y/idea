@@ -1,14 +1,22 @@
-// ナチュラルボイスチェンジャー — 画面の処理(声の変換そのものは voice-processor.js)
+// ナチュラルボイスチェンジャー — 画面の処理
+//   リアルタイム: voice-processor.js(AudioWorklet)
+//   ファイル(高品質): hq-engine.js(Web Worker で作り直し合成)
+//   あなた専用の設定: voice-analysis.js(声の高さ・抑揚の幅・声道の長さを測る)
+import { detectF0, profileVoice } from "./voice-analysis.js";
 
-// なりたい声のプリセット。target は変換後の声の高さ(Hz)、formant は響きの倍率
+// なりたい声のプリセット。
+//   target: 変換後の声の高さ(Hz)  formant: 平均的な男性の声から見た響きの倍率
+//   range: その声らしい抑揚の幅(半音の標準偏差)  breath: 息っぽさ
 const PRESETS = [
-  { id: "girl", e: "🎀", name: "女の子", desc: "明るくかわいい10〜20代の声", target: 250, formant: 1.2, bright: 4, lowcut: 180 },
-  { id: "sister", e: "💄", name: "お姉さん", desc: "落ち着いた大人の女性の声", target: 205, formant: 1.14, bright: 3, lowcut: 150 },
-  { id: "boy", e: "✨", name: "美少年", desc: "澄んだ中性的な少年の声", target: 175, formant: 1.1, bright: 3, lowcut: 130 },
-  { id: "ryosei", e: "🌗", name: "両声類(中性)", desc: "男女どちらにも聞こえる声", target: 160, formant: 1.07, bright: 2, lowcut: 110 },
-  { id: "shota", e: "🧢", name: "ショタ", desc: "元気な小学生くらいの男の子", target: 260, formant: 1.24, bright: 4, lowcut: 180 },
-  { id: "ikevo", e: "🎩", name: "低音イケボ", desc: "今より低く太い大人の男性の声", target: 0.85, formant: 0.94, bright: -1, lowcut: 50, relative: true },
+  { id: "girl", e: "🎀", name: "女の子", desc: "明るくかわいい10〜20代の声", target: 250, formant: 1.2, range: 3.0, breath: 0.35, bright: 3, lowcut: 180 },
+  { id: "sister", e: "💄", name: "お姉さん", desc: "落ち着いた大人の女性の声", target: 205, formant: 1.14, range: 2.6, breath: 0.3, bright: 2, lowcut: 150 },
+  { id: "boy", e: "✨", name: "美少年", desc: "澄んだ中性的な少年の声", target: 175, formant: 1.1, range: 2.4, breath: 0.2, bright: 2, lowcut: 130 },
+  { id: "ryosei", e: "🌗", name: "両声類(中性)", desc: "男女どちらにも聞こえる声", target: 160, formant: 1.07, range: 2.6, breath: 0.2, bright: 1, lowcut: 110 },
+  { id: "shota", e: "🧢", name: "ショタ", desc: "元気な小学生くらいの男の子", target: 260, formant: 1.24, range: 3.2, breath: 0.25, bright: 3, lowcut: 180 },
+  { id: "ikevo", e: "🎩", name: "低音イケボ", desc: "今より低く太い大人の男性の声", target: 0.85, formant: 0.94, range: 2.0, breath: 0.05, bright: -1, lowcut: 50, relative: true },
 ];
+// 声道の長さの基準(平均的な男性を測った時の値)。この測り方での基準値
+const REF_TRACT = 16.5;
 
 const KEY = "voice-changer:v1";
 const saved = (() => {
@@ -18,10 +26,35 @@ const saved = (() => {
     return {};
   }
 })();
-const state = { f0: saved.f0 || 0, preset: saved.preset || "girl", pitch: 0, formant: 1, bright: 0, lowcut: 80 };
+const state = {
+  f0: saved.f0 || 0,
+  range: saved.range || 0, // あなたの抑揚の幅
+  tract: saved.tract || 0, // あなたの声道の長さ(cm)
+  preset: saved.preset || "girl",
+  pitch: 0,
+  formant: 1,
+  bright: 0,
+  lowcut: 80,
+  breath: 0,
+  inton: 1,
+  gate: saved.gate ?? -55,
+  keepConsonants: saved.keepConsonants ?? true,
+};
+const CUSTOM_KEYS = ["pitch", "formant", "bright", "lowcut", "breath", "inton"];
 const persist = () => {
   try {
-    localStorage.setItem(KEY, JSON.stringify({ f0: state.f0, preset: state.preset, custom: { pitch: state.pitch, formant: state.formant, bright: state.bright, lowcut: state.lowcut } }));
+    localStorage.setItem(
+      KEY,
+      JSON.stringify({
+        f0: state.f0,
+        range: state.range,
+        tract: state.tract,
+        preset: state.preset,
+        gate: state.gate,
+        keepConsonants: state.keepConsonants,
+        custom: Object.fromEntries(CUSTOM_KEYS.map((k) => [k, state[k]])),
+      }),
+    );
   } catch {}
 };
 
@@ -37,80 +70,83 @@ function toast(msg) {
 const myF0 = () => state.f0 || 110;
 const semis = (ratio) => 12 * Math.log2(ratio);
 
-// ---------- 1. 声の高さを測る ----------
-// 正規化自己相関で基本周波数を出す。はっきりした周期がない(無声音・無音)ときは null
-function detectF0(buf, sr) {
-  let rms = 0;
-  for (const v of buf) rms += v * v;
-  rms = Math.sqrt(rms / buf.length);
-  if (rms < 0.01) return null;
-  const W = Math.floor(buf.length / 2);
-  const minLag = Math.floor(sr / 400);
-  const maxLag = Math.min(W, Math.floor(sr / 60));
-  const r = new Float32Array(maxLag + 1);
-  for (let lag = minLag; lag <= maxLag; lag++) {
-    let s = 0, a = 0, b = 0;
-    for (let i = 0; i < W; i++) {
-      s += buf[i] * buf[i + lag];
-      a += buf[i] * buf[i];
-      b += buf[i + lag] * buf[i + lag];
-    }
-    r[lag] = s / Math.sqrt(a * b + 1e-12);
-  }
-  let mx = 0;
-  for (let l = minLag; l <= maxLag; l++) mx = Math.max(mx, r[l]);
-  if (mx < 0.75) return null;
-  for (let l = minLag + 1; l < maxLag; l++) {
-    if (r[l] > 0.9 * mx && r[l] >= r[l - 1] && r[l] >= r[l + 1]) return sr / l;
-  }
-  return null;
-}
-
+// ---------- 1. あなたの声を測る ----------
+// 6秒ぶん録音して、声の高さ・抑揚の幅・声道の長さを出す
 async function measure() {
   const btn = $("#measure");
   btn.disabled = true;
   let stream;
   try {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: false } });
+    // 測定の時は雑音除去もオフ(声の響きの形が変わってしまうため)
+    stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
   } catch {
     btn.disabled = false;
     return toast("マイクを使えません。ブラウザのマイク許可を確認してください");
   }
   const ctx = new AudioContext();
+  await ctx.audioWorklet.addModule("./capture-processor.js");
+  const src = ctx.createMediaStreamSource(stream);
   const an = ctx.createAnalyser();
-  an.fftSize = 4096;
-  ctx.createMediaStreamSource(stream).connect(an);
+  an.fftSize = 2048;
+  src.connect(an);
+  // 圧縮しない生の音を集める
+  const cap = new AudioWorkletNode(ctx, "capture-processor");
+  const chunks = [];
+  cap.port.onmessage = (e) => chunks.push(e.data);
+  src.connect(cap);
   const buf = new Float32Array(an.fftSize);
-  const found = [];
   const start = performance.now();
   btn.textContent = "🎤 話してください…";
   await new Promise((done) => {
     const tick = () => {
       const t = performance.now() - start;
-      $("#measureBar").style.width = `${Math.min(100, t / 50)}%`;
+      $("#measureBar").style.width = `${Math.min(100, t / 60)}%`;
       an.getFloatTimeDomainData(buf);
       const f = detectF0(buf, ctx.sampleRate);
-      if (f) found.push(f);
-      t < 5000 ? setTimeout(tick, 60) : done();
+      if (f) $("#liveF0").textContent = `いまの声:${Math.round(f)}Hz`;
+      t < 6000 ? setTimeout(tick, 80) : done();
     };
     tick();
   });
+  src.disconnect();
   stream.getTracks().forEach((t) => t.stop());
+  btn.textContent = "🎤 もう一度測る";
+  $("#liveF0").textContent = "分析中…";
+  let prof = null;
+  try {
+    const all = new Float32Array(chunks.reduce((n, c) => n + c.length, 0));
+    let o = 0;
+    for (const c of chunks) {
+      all.set(c, o);
+      o += c.length;
+    }
+    prof = profileVoice(all, ctx.sampleRate);
+  } catch {}
   ctx.close();
   btn.disabled = false;
-  btn.textContent = "🎤 もう一度測る";
-  if (found.length < 10) return toast("声がうまく拾えませんでした。マイクに近づいてもう一度お試しください");
-  found.sort((a, b) => a - b);
-  state.f0 = Math.round(found[Math.floor(found.length / 2)]);
+  $("#liveF0").textContent = "";
+  if (!prof) return toast("声がうまく拾えませんでした。マイクに近づいてもう一度お試しください");
+  state.f0 = prof.f0;
+  state.range = prof.range;
+  state.tract = prof.tract || 0;
   persist();
-  applyPreset(state.preset);
+  applyPreset(state.preset === "custom" ? "girl" : state.preset);
   showF0();
+  toast("あなた専用の設定を作りました");
 }
 
 function showF0() {
   const f = state.f0;
-  const kind = !f ? "" : f < 130 ? "(低めの男性の声)" : f < 165 ? "(男性〜中性的な声)" : f < 210 ? "(中性〜女性の低めの声)" : "(女性の声の高さ)";
-  $("#myF0").textContent = f ? `あなたの声:約 ${f}Hz ${kind}` : "未測定(男性の平均 110Hz として計算します)";
+  if (!f) {
+    $("#myF0").innerHTML = "未測定(男性の平均 110Hz として計算します)";
+    return;
+  }
+  const kind = f < 130 ? "低めの男性の声" : f < 165 ? "男性〜中性的な声" : f < 210 ? "中性〜女性の低めの声" : "女性の声の高さ";
+  $("#myF0").innerHTML = `<div class="prof">
+    <div><small>声の高さ</small><b>${f}Hz</b><span>${kind}</span></div>
+    <div><small>抑揚の幅</small><b>${state.range ? `${state.range}半音` : "—"}</b><span>${!state.range ? "" : state.range < 1.8 ? "落ち着いた話し方" : state.range < 3 ? "ふつう" : "表情ゆたか"}</span></div>
+    <div><small>声道の長さ(推定)</small><b>${state.tract ? `${state.tract}cm` : "—"}</b><span>${state.tract ? "のどから唇まで" : "測れませんでした"}</span></div>
+  </div>`;
 }
 
 // ---------- 2. プリセットと調整 ----------
@@ -119,7 +155,12 @@ function applyPreset(id) {
   state.preset = p.id;
   const ratio = p.relative ? p.target : p.target / myF0();
   state.pitch = Math.round(semis(ratio) * 2) / 2;
-  state.formant = p.formant;
+  // あなた専用: 声道がもともと短めの人は響きを少なめに、長めの人は多めに動かす(測定のぶれを考えて ±8% まで)
+  const tractAdj = state.tract ? Math.min(1.08, Math.max(0.92, state.tract / REF_TRACT)) : 1;
+  state.formant = Math.round(p.formant * tractAdj * 100) / 100;
+  // あなた専用: 抑揚が小さめの人は、その声らしい幅まで広げる
+  state.inton = state.range >= 0.8 ? Math.round(Math.min(1.4, Math.max(0.9, p.range / state.range)) * 20) / 20 : p.relative ? 1 : 1.15;
+  state.breath = p.breath;
   state.bright = p.bright;
   state.lowcut = p.lowcut;
   persist();
@@ -140,14 +181,20 @@ function renderControls() {
   $("#formant").value = state.formant;
   $("#bright").value = state.bright;
   $("#lowcut").value = state.lowcut;
+  $("#breath").value = state.breath;
+  $("#inton").value = state.inton;
+  $("#gate").value = state.gate;
+  $("#keepConsonants").checked = state.keepConsonants;
   const after = Math.round(myF0() * 2 ** (state.pitch / 12));
   $("#pitchVal").textContent = `${state.pitch > 0 ? "+" : ""}${state.pitch} 半音(約 ${after}Hz に)`;
   $("#formantVal").textContent = `${state.formant.toFixed(2)} 倍`;
   $("#brightVal").textContent = `${state.bright > 0 ? "+" : ""}${state.bright} dB`;
   $("#lowcutVal").textContent = `${state.lowcut} Hz 以下`;
+  $("#breathVal").textContent = `${Math.round(state.breath * 100)}%`;
+  $("#intonVal").textContent = `${state.inton.toFixed(2)} 倍`;
 }
 
-for (const id of ["pitch", "formant", "bright", "lowcut"]) {
+for (const id of ["pitch", "formant", "bright", "lowcut", "breath", "inton"]) {
   $(`#${id}`).addEventListener("input", (e) => {
     state[id] = Number(e.target.value);
     state.preset = "custom";
@@ -157,11 +204,31 @@ for (const id of ["pitch", "formant", "bright", "lowcut"]) {
   });
 }
 
+$("#gate").onchange = (e) => {
+  state.gate = Number(e.target.value);
+  persist();
+  pushParams();
+};
+$("#keepConsonants").onchange = (e) => {
+  state.keepConsonants = e.target.checked;
+  persist();
+  pushParams();
+};
+
+// 変換に渡す設定
+const vcParams = () => ({
+  pitch: 2 ** (state.pitch / 12),
+  formant: state.formant,
+  breath: state.breath,
+  inton: state.inton,
+  gateDb: state.gate,
+  keepConsonants: state.keepConsonants,
+  baseF0: state.f0 || 0,
+});
+
 // ---------- 音の流れ: 入力 → 声の変換 → 低音カット → 明るさ → 出力 ----------
 function buildChain(ctx, source) {
-  const vc = new AudioWorkletNode(ctx, "voice-processor", {
-    processorOptions: { pitch: 2 ** (state.pitch / 12), formant: state.formant },
-  });
+  const vc = new AudioWorkletNode(ctx, "voice-processor", { processorOptions: vcParams() });
   const hp = new BiquadFilterNode(ctx, { type: "highpass", frequency: state.lowcut, Q: 0.7 });
   const shelf = new BiquadFilterNode(ctx, { type: "highshelf", frequency: 3500, gain: state.bright });
   source.connect(vc).connect(hp).connect(shelf);
@@ -172,7 +239,7 @@ let live = null; // リアルタイム変換中の音の流れ
 
 function pushParams() {
   if (!live) return;
-  live.vc.port.postMessage({ pitch: 2 ** (state.pitch / 12), formant: state.formant });
+  live.vc.port.postMessage(vcParams());
   live.hp.frequency.value = state.lowcut;
   live.shelf.gain.value = state.bright;
 }
@@ -189,21 +256,39 @@ async function startLive() {
     return toast("マイクを使えません。ブラウザのマイク許可を確認してください");
   }
   const ctx = new AudioContext({ latencyHint: "interactive" });
-  await ctx.audioWorklet.addModule("/voice-processor.js");
+  await ctx.audioWorklet.addModule("./voice-processor.js");
   const chain = buildChain(ctx, ctx.createMediaStreamSource(stream));
   const recDest = ctx.createMediaStreamDestination();
   chain.out.connect(ctx.destination);
   chain.out.connect(recDest);
   live = { ctx, stream, recDest, ...chain };
   if ($("#sink").value) await ctx.setSinkId?.($("#sink").value).catch(() => {});
+  // モニター: 変換した声を、別の出力先(ヘッドホン)でも鳴らす。配信で CABLE に送りながら自分でも聞ける
+  live.monitor = new Audio();
+  live.monitor.srcObject = recDest.stream;
+  updateMonitor();
+  if (!$("#sink").options.length || !$("#sink").options[0].textContent.trim() || $("#sink").options[0].textContent.startsWith("出力")) listSinks();
   $("#liveStart").textContent = "■ 変換ストップ";
   $("#compare").disabled = false;
   $("#rec").disabled = false;
   toast("変換中です。ヘッドホンで自分の声を確認してください");
 }
 
+async function updateMonitor() {
+  if (!live?.monitor) return;
+  if ($("#monitor").checked) {
+    if ($("#monSink").value) await live.monitor.setSinkId?.($("#monSink").value).catch(() => {});
+    live.monitor.play().catch(() => {});
+  } else {
+    live.monitor.pause();
+  }
+}
+$("#monitor").onchange = updateMonitor;
+$("#monSink").onchange = updateMonitor;
+
 function stopLive() {
   if (!live) return;
+  live.monitor?.pause();
   if (live.recorder?.state === "recording") live.recorder.stop();
   live.stream.getTracks().forEach((t) => t.stop());
   live.ctx.close();
@@ -250,8 +335,11 @@ async function listSinks() {
     const devices = await navigator.mediaDevices.enumerateDevices();
     const outs = devices.filter((d) => d.kind === "audiooutput");
     if (!outs.length) return;
-    $("#sink").innerHTML = outs.map((d, i) => `<option value="${d.deviceId}">${d.label || `出力 ${i + 1}`}</option>`).join("");
+    const opts = outs.map((d, i) => `<option value="${d.deviceId}">${d.label || `出力 ${i + 1}`}</option>`).join("");
+    $("#sink").innerHTML = opts;
+    $("#monSink").innerHTML = opts;
     $("#sinkWrap").hidden = false;
+    $("#monWrap").hidden = false;
     $("#sink").onchange = () => live?.ctx.setSinkId($("#sink").value).catch(() => toast("出力先を変更できませんでした"));
   } catch {}
 }
@@ -305,9 +393,10 @@ $("#convert").onclick = async () => {
   btn.disabled = true;
   btn.textContent = "変換中…";
   try {
-    const wav = encodeWav(await renderOffline(sourceBuffer));
+    const wav = encodeWav(await renderOffline(sourceBuffer, (pr) => (btn.textContent = `変換中… ${Math.round(pr * 100)}%`)));
     const p = PRESETS.find((x) => x.id === state.preset);
-    addClip("#fileOut", wav, `変換結果(${p ? p.name : "カスタム"})`, "wav");
+    const eng = $("#engine").value === "hq" ? "高品質" : "リアルタイム方式";
+    addClip("#fileOut", wav, `変換結果(${p ? p.name : "カスタム"}・${eng})`, "wav");
   } catch (err) {
     console.error(err);
     toast("変換に失敗しました");
@@ -316,20 +405,54 @@ $("#convert").onclick = async () => {
   btn.textContent = "✨ 今の設定で変換";
 };
 
+// 高品質エンジンを別スレッドで動かす
+function runHQ(mono, sr, onProgress) {
+  return new Promise((resolve, reject) => {
+    const w = new Worker("./hq-worker.js", { type: "module" });
+    w.onmessage = (e) => {
+      if (e.data.progress != null) onProgress(e.data.progress);
+      if (e.data.done) {
+        w.terminate();
+        resolve(e.data.done);
+      }
+      if (e.data.error) {
+        w.terminate();
+        reject(new Error(e.data.error));
+      }
+    };
+    w.onerror = (e) => {
+      w.terminate();
+      reject(e);
+    };
+    const p = vcParams();
+    w.postMessage({ data: mono, sampleRate: sr, opts: { pitch: p.pitch, formant: p.formant, inton: p.inton, breath: p.breath, baseF0: p.baseF0 } });
+  });
+}
+
 // 変換処理の遅れ(1536サンプル)ぶん長めに作って先頭を切る
 const LATENCY = 1536;
-async function renderOffline(buf) {
+async function renderOffline(buf, onProgress = () => {}) {
   const sr = buf.sampleRate;
   const mono = new Float32Array(buf.length);
   for (let c = 0; c < buf.numberOfChannels; c++) buf.getChannelData(c).forEach((v, i) => (mono[i] += v / buf.numberOfChannels));
+  const hq = $("#engine").value === "hq";
+  const input = hq ? await runHQ(mono, sr, onProgress) : mono;
   const ctx = new OfflineAudioContext(1, buf.length + LATENCY + sr, sr);
-  await ctx.audioWorklet.addModule("/voice-processor.js");
   const inBuf = ctx.createBuffer(1, buf.length, sr);
-  inBuf.copyToChannel(mono, 0);
+  inBuf.copyToChannel(input, 0);
   const src = new AudioBufferSourceNode(ctx, { buffer: inBuf });
-  buildChain(ctx, src).out.connect(ctx.destination);
+  if (hq) {
+    // 高品質エンジンの後ろには、低音カットと明るさだけを掛ける
+    const hp = new BiquadFilterNode(ctx, { type: "highpass", frequency: state.lowcut, Q: 0.7 });
+    const shelf = new BiquadFilterNode(ctx, { type: "highshelf", frequency: 3500, gain: state.bright });
+    src.connect(hp).connect(shelf).connect(ctx.destination);
+  } else {
+    await ctx.audioWorklet.addModule("./voice-processor.js");
+    buildChain(ctx, src).out.connect(ctx.destination);
+  }
   src.start();
-  const out = (await ctx.startRendering()).getChannelData(0).slice(LATENCY, LATENCY + buf.length);
+  const skip = hq ? 0 : LATENCY;
+  const out = (await ctx.startRendering()).getChannelData(0).slice(skip, skip + buf.length);
   // 音割れしないよう最大音量を -1dB にそろえる
   let peak = 0;
   for (const v of out) peak = Math.max(peak, Math.abs(v));
@@ -381,10 +504,19 @@ document.querySelectorAll(".tab").forEach(
 );
 
 // ---------- 起動 ----------
+// マイクは https か localhost のページでしか使えない(スマホで開く時は https で公開したページを使う)
+if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+  document.querySelector("header").insertAdjacentHTML(
+    "beforeend",
+    `<p class="warn">⚠️ このページではマイクが使えません。パソコンでは http://localhost で、スマホでは https で公開したページ(GitHub Pages など)で開いてください。</p>`,
+  );
+}
 $("#measure").onclick = measure;
 showF0();
 if (state.preset === "custom" && saved.custom) {
   Object.assign(state, saved.custom);
+  state.breath ??= 0;
+  state.inton ??= 1;
   renderControls();
 } else {
   applyPreset(state.preset);

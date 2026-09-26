@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#101418" />
   <title>ナチュラルボイスチェンジャー</title>
-  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <main id="app">
@@ -15,13 +15,14 @@
     </header>
 
     <section class="card" id="step1">
-      <h2><span class="num">1</span>あなたの声の高さを測る</h2>
-      <p class="muted">ボタンを押したら、ふだんの声で「こんにちは、今日はいい天気ですね」と2〜3回読んでください(約5秒)。</p>
+      <h2><span class="num">1</span>あなたの声を測る(あなた専用の設定を作る)</h2>
+      <p class="muted">ボタンを押したら、ふだんの声で「こんにちは、今日はいい天気ですね。明日はどこに行こうかな」と読んでください(約6秒)。声の高さ・抑揚の幅・声道の長さを測って、あなたの声に合わせた変換量を計算します。</p>
       <div class="row">
         <button class="btn" id="measure">🎤 測定する</button>
         <div class="meter"><div id="measureBar"></div></div>
       </div>
-      <p class="big" id="myF0">未測定(男性の平均 110Hz として計算します)</p>
+      <p class="muted" id="liveF0"></p>
+      <div class="big" id="myF0">未測定(男性の平均 110Hz として計算します)</div>
     </section>
 
     <section class="card">
@@ -37,7 +38,19 @@
           <input type="range" id="bright" min="-4" max="10" step="1" /></label>
         <label>低音カット <b id="lowcutVal"></b>
           <input type="range" id="lowcut" min="40" max="300" step="10" /></label>
-        <p class="hint">目安:響きを上げすぎると子どもっぽく、下げると大人っぽく・太くなります。女声は「変換後の高さ 200〜260Hz、響き 1.15〜1.22」あたりが自然です(地声が低い人ほど半音の数は大きくなります)。</p>
+        <label>息っぽさ <b id="breathVal"></b>
+          <input type="range" id="breath" min="0" max="1" step="0.05" /></label>
+        <label>抑揚(声の上がり下がりの大きさ) <b id="intonVal"></b>
+          <input type="range" id="inton" min="0.8" max="1.6" step="0.05" /></label>
+        <label>ノイズゲート(話していない時の雑音を消す)
+          <select id="gate">
+            <option value="-120">オフ</option>
+            <option value="-60">弱め</option>
+            <option value="-55">ふつう</option>
+            <option value="-45">強め(雑音が多い部屋)</option>
+          </select></label>
+        <label class="check"><input type="checkbox" id="keepConsonants" /> 子音(さ行・た行などの息の音)は高さを変えない(おすすめ)</label>
+        <p class="hint">プリセットを選ぶと、測ったあなたの声に合わせて全部の値が自動で決まります。目安:響きを上げすぎると子どもっぽく、下げると大人っぽく・太くなります。女声は「変換後の高さ 200〜260Hz、響き 1.15〜1.22」あたりが自然です(地声が低い人ほど半音の数は大きくなります)。</p>
       </details>
     </section>
 
@@ -55,9 +68,22 @@
           <button class="btn" id="compare" disabled>🔁 元の声と聞きくらべ</button>
           <button class="btn" id="rec" disabled>⏺ 録音</button>
         </div>
-        <label class="inline" id="sinkWrap" hidden>出力先
+        <label class="inline" id="sinkWrap" hidden>変換した声の出力先
           <select id="sink"></select></label>
-        <p class="hint">Discord・配信ソフトに使うときは、仮想オーディオケーブル(VB-CABLE など)を入れて、ここの出力先を「CABLE Input」にし、Discord 側のマイクを「CABLE Output」にします。</p>
+        <label class="inline" id="monWrap" hidden><input type="checkbox" id="monitor" /> 自分の声をヘッドホンで聞く(モニター)
+          <select id="monSink"></select></label>
+        <details class="obs">
+          <summary>🎥 Twitch・OBS・Discord で使う</summary>
+          <ol>
+            <li>仮想オーディオケーブル <b>VB-CABLE</b>(無料)をインストールして、パソコンを再起動</li>
+            <li>このアプリの「変換した声の出力先」を <b>CABLE Input</b> にする</li>
+            <li>自分の声を聞きたいときは「モニター」にチェックして、出力先を<b>ヘッドホン</b>にする</li>
+            <li>OBS:「音声入力キャプチャ」を追加 → デバイスを <b>CABLE Output</b> にする。<b>元のマイクは OBS でミュート</b>(地声が混ざるため)</li>
+            <li>Discord:設定 → 音声 → 入力デバイスを <b>CABLE Output</b>。Discord 側のノイズ抑制は<b>オフ</b>がおすすめ(声が不自然になりやすい)</li>
+            <li>配信中はこのタブを閉じない(別のタブに切り替えるのは大丈夫)</li>
+          </ol>
+          <p class="hint">遅れは約0.05〜0.1秒です。口の動き(アバター)と少しずれる場合は、OBS の「音声の詳細プロパティ」で映像側を同期オフセットで遅らせると合います。</p>
+        </details>
         <div id="recs"></div>
       </div>
 
@@ -68,6 +94,12 @@
           <label class="btn file">📂 音声ファイルを選ぶ<input type="file" id="file" accept="audio/*" hidden /></label>
         </div>
         <p class="muted" id="fileName"></p>
+        <label class="inline">変換の方式
+          <select id="engine">
+            <option value="hq">高品質(声を作り直す・おすすめ)</option>
+            <option value="rt">リアルタイムと同じ方式</option>
+          </select></label>
+        <p class="hint">高品質は、声の高さを前後も見て正確に調べ、声を1から作り直します。少し時間がかかりますが、濁りや響きのにじみが出にくくなります。聞きくらべて自然な方を選んでください。</p>
         <button class="btn main" id="convert" disabled>✨ 今の設定で変換</button>
         <div id="fileOut"></div>
       </div>
@@ -88,6 +120,6 @@
     <p class="footer muted">ほかの人になりすましてだましたり、迷惑をかけたりする使い方はしないでください。</p>
   </main>
   <div id="toast" role="status"></div>
-  <script type="module" src="/app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
