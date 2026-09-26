@@ -71,3 +71,7 @@ if os.path.isdir(os.path.dirname(KANATA)):
         f.write(html)
     import shutil
     shutil.copy(os.path.join(ROOT, "ボイスチェンジャー_コエカワ", "AIボイチェン_無料で使う手順.html"), os.path.join(os.path.dirname(KANATA), "AIボイチェン_無料で使う手順.html"))
+    ai = os.path.join(ROOT, "ボイスチェンジャー_コエカワ", "AIボイチェン")
+    dst = os.path.join(os.path.dirname(KANATA), "AIボイチェン")
+    shutil.rmtree(dst, ignore_errors=True)
+    shutil.copytree(ai, dst)
