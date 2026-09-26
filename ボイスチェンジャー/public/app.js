@@ -40,6 +40,7 @@ const state = {
   soft: 0,
   gate: saved.gate ?? -55,
   keepConsonants: saved.keepConsonants ?? true,
+  mine: saved.mine || [], // マイ設定 [{ name, pitch, formant, ... }]
 };
 const CUSTOM_KEYS = ["pitch", "formant", "bright", "lowcut", "breath", "inton", "soft"];
 const persist = () => {
@@ -53,6 +54,7 @@ const persist = () => {
         preset: state.preset,
         gate: state.gate,
         keepConsonants: state.keepConsonants,
+        mine: state.mine,
         custom: Object.fromEntries(CUSTOM_KEYS.map((k) => [k, state[k]])),
       }),
     );
@@ -175,6 +177,50 @@ function renderPresets() {
     (p) => `<button class="preset ${p.id === state.preset ? "active" : ""}" data-id="${p.id}"><span class="e">${p.e}</span><b>${p.name}</b><small>${p.desc}</small></button>`,
   ).join("");
   document.querySelectorAll(".preset").forEach((b) => (b.onclick = () => applyPreset(b.dataset.id)));
+  renderMine();
+}
+
+// ---------- マイ設定(自分で調整した設定を名前をつけて保存) ----------
+const escHtml = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+function renderMine() {
+  $("#mine").innerHTML =
+    state.mine
+      .map(
+        (m, i) =>
+          `<span class="mine ${state.preset === `mine:${i}` ? "active" : ""}"><button data-i="${i}">⭐ ${escHtml(m.name)}</button><button class="del" data-del="${i}" aria-label="削除">×</button></span>`,
+      )
+      .join("") + `<button class="btn small" id="saveMine">＋ 今の設定を保存</button>`;
+  $("#mine").querySelectorAll("[data-i]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        const m = state.mine[Number(b.dataset.i)];
+        for (const k of CUSTOM_KEYS) if (m[k] != null) state[k] = m[k];
+        state.preset = `mine:${b.dataset.i}`;
+        persist();
+        renderControls();
+        pushParams();
+      }),
+  );
+  $("#mine").querySelectorAll("[data-del]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        const i = Number(b.dataset.del);
+        if (!confirm(`「${state.mine[i].name}」を削除しますか？`)) return;
+        state.mine.splice(i, 1);
+        if (state.preset.startsWith("mine:")) state.preset = "custom";
+        persist();
+        renderControls();
+      }),
+  );
+  $("#saveMine").onclick = () => {
+    const name = prompt("この設定の名前(例:配信用の女の子)", "")?.trim().slice(0, 20);
+    if (!name) return;
+    state.mine.push({ name, ...Object.fromEntries(CUSTOM_KEYS.map((k) => [k, state[k]])) });
+    state.preset = `mine:${state.mine.length - 1}`;
+    persist();
+    renderControls();
+    toast(`「${name}」を保存しました`);
+  };
 }
 
 function renderControls() {
@@ -387,28 +433,37 @@ async function loadSource(blob, label) {
     ctx.close();
     $("#fileName").textContent = `🎧 ${label}(${sourceBuffer.duration.toFixed(1)}秒)`;
     $("#convert").disabled = false;
+    $("#convertBoth").disabled = false;
   } catch {
     toast("この音声ファイルは読み込めませんでした");
   }
 }
 
-$("#convert").onclick = async () => {
+const settingName = () =>
+  PRESETS.find((x) => x.id === state.preset)?.name ||
+  (state.preset.startsWith("mine:") ? state.mine[Number(state.preset.slice(5))]?.name : null) ||
+  "カスタム";
+
+async function convertWith(engines, btn, label) {
   if (!sourceBuffer) return;
-  const btn = $("#convert");
   btn.disabled = true;
-  btn.textContent = "変換中…";
   try {
-    const wav = encodeWav(await renderOffline(sourceBuffer, (pr) => (btn.textContent = `変換中… ${Math.round(pr * 100)}%`)));
-    const p = PRESETS.find((x) => x.id === state.preset);
-    const eng = $("#engine").value === "hq" ? "高品質" : "リアルタイム方式";
-    addClip("#fileOut", wav, `変換結果(${p ? p.name : "カスタム"}・${eng})`, "wav");
+    for (const eng of engines) {
+      const name = eng === "hq" ? "高品質" : "リアルタイム方式";
+      btn.textContent = `${name}で変換中…`;
+      const wav = encodeWav(await renderOffline(sourceBuffer, (pr) => (btn.textContent = `${name}で変換中… ${Math.round(pr * 100)}%`), eng));
+      addClip("#fileOut", wav, `${settingName()}・${name}`, "wav");
+    }
   } catch (err) {
     console.error(err);
     toast("変換に失敗しました");
   }
   btn.disabled = false;
-  btn.textContent = "✨ 今の設定で変換";
-};
+  btn.textContent = label;
+}
+$("#convert").onclick = () => convertWith([$("#engine").value], $("#convert"), "✨ 今の設定で変換");
+// 同じ録音を両方の方式で変換して並べる(自分の声でどちらが自然か聞きくらべる)
+$("#convertBoth").onclick = () => convertWith(["rt", "hq"], $("#convertBoth"), "🎧 両方の方式で変換して聞きくらべ");
 
 // 高品質エンジンを別スレッドで動かす
 function runHQ(mono, sr, onProgress) {
@@ -436,11 +491,11 @@ function runHQ(mono, sr, onProgress) {
 
 // 変換処理の遅れ(1536サンプル)ぶん長めに作って先頭を切る
 const LATENCY = 1536;
-async function renderOffline(buf, onProgress = () => {}) {
+async function renderOffline(buf, onProgress = () => {}, engine = $("#engine").value) {
   const sr = buf.sampleRate;
   const mono = new Float32Array(buf.length);
   for (let c = 0; c < buf.numberOfChannels; c++) buf.getChannelData(c).forEach((v, i) => (mono[i] += v / buf.numberOfChannels));
-  const hq = $("#engine").value === "hq";
+  const hq = engine === "hq";
   const input = hq ? await runHQ(mono, sr, onProgress) : mono;
   const ctx = new OfflineAudioContext(1, buf.length + LATENCY + sr, sr);
   const inBuf = ctx.createBuffer(1, buf.length, sr);
@@ -518,7 +573,7 @@ if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
 }
 $("#measure").onclick = measure;
 showF0();
-if (state.preset === "custom" && saved.custom) {
+if ((state.preset === "custom" || state.preset.startsWith("mine:")) && saved.custom) {
   Object.assign(state, saved.custom);
   state.breath ??= 0;
   state.soft ??= 0;

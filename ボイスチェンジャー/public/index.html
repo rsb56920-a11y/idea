@@ -28,6 +28,7 @@
     <section class="card">
       <h2><span class="num">2</span>なりたい声を選ぶ</h2>
       <div class="presets" id="presets"></div>
+      <div class="mine-row" id="mine"></div>
       <details class="adjust" open>
         <summary>細かく調整する</summary>
         <label>声の高さ(ピッチ) <b id="pitchVal"></b>
@@ -102,7 +103,10 @@
             <option value="rt">リアルタイムと同じ方式</option>
           </select></label>
         <p class="hint">高品質は、声の高さを前後も見て正確に調べ、声を1から作り直します。少し時間がかかりますが、濁りや響きのにじみが出にくくなります。聞きくらべて自然な方を選んでください。</p>
-        <button class="btn main" id="convert" disabled>✨ 今の設定で変換</button>
+        <div class="row wrap">
+          <button class="btn main" id="convert" disabled>✨ 今の設定で変換</button>
+          <button class="btn" id="convertBoth" disabled>🎧 両方の方式で変換して聞きくらべ</button>
+        </div>
         <div id="fileOut"></div>
       </div>
     </section>
