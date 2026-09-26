@@ -172,6 +172,7 @@ class ResynthProcessor extends AudioWorkletProcessor {
     this.gain = 1;
     this.gateGain = 1;
     this.fast = 1;
+    this.snapRatio = this.snapRatio ?? 0.3;
     this.hIn = new Float64Array(3);
     this.hOut = new Float64Array(3);
     this.hIdx = 0;
@@ -293,12 +294,15 @@ class ResynthProcessor extends AudioWorkletProcessor {
     // いまの5msだけで見て急に静かになったとき(12dB以上の余裕をみて)も、すぐ絞る
     const now1 = 4 * Math.sqrt(pi / (po * st.gain * st.gain + 1e-12));
     const tgt = Math.min(1, Math.sqrt(eIn / (eOut + 1e-12)), now1);
-    this.fast += (tgt - this.fast) * (tgt < this.fast ? 0.6 : 0.35);
+    // 入力が急に静かになったとき(今の値の3割未満)は一気に絞る(笑い声「ハッハッ」の間がつながらないように)
+    this.fast += (tgt - this.fast) * (tgt < this.fast * this.snapRatio ? 1 : tgt < this.fast ? 0.6 : 0.35);
     const g1 = st.gain * this.gateGain * this.fast;
     const g0 = this.gain;
+    // 急に絞るときは約1msで切り替える(5msかけると、その間に声の余韻が残る)
+    const rampN = g1 < g0 * this.snapRatio ? Math.round(sr * 0.001) : this.hop;
     let peak = 0;
     for (let n = t0; n < c; n++) {
-      const g = g0 + ((g1 - g0) * (n - t0)) / this.hop;
+      const g = n - t0 >= rampN ? g1 : g0 + ((g1 - g0) * (n - t0)) / rampN;
       const v = (this.outRing[n & MASK] *= g);
       if (Math.abs(v) > peak) peak = Math.abs(v);
     }
