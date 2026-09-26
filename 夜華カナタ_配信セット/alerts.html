@@ -1,0 +1,310 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<title>Twitch 通知</title>
+<!-- OBS のブラウザソース用(1920x1080・背景は透明)。
+     コメント・サブスク・レイド・ビッツ: チャンネル名だけで動く(Twitch のチャットを匿名で読む)
+     フォロー: Twitch の連携が必要(手順書「フォロー通知を使う」)
+     テスト: alerts.html?test=1 で見本が順番に出る -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&display=swap" />
+<style>
+  :root { --navy: #1f1a3a; --purple: #5b3fa8; --gold: #ffecaa; }
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: transparent; font-family: "M PLUS Rounded 1c", "Yu Gothic UI", "Meiryo", sans-serif; }
+  /* ---- 大きな通知 ---- */
+  .alert {
+    position: absolute; left: 50%; top: 90px; width: 860px; margin-left: -430px; padding: 26px 34px; box-sizing: border-box;
+    display: flex; align-items: center; gap: 26px; color: #fff; border-radius: 28px;
+    background: linear-gradient(120deg, rgba(31, 26, 58, 0.94), rgba(91, 63, 168, 0.94));
+    border: 3px solid var(--gold); box-shadow: 0 0 40px rgba(255, 236, 170, 0.45), 0 20px 50px rgba(0, 0, 0, 0.4);
+    transform: translateY(-260px) scale(0.9); opacity: 0; transition: transform 0.6s cubic-bezier(0.2, 1.4, 0.4, 1), opacity 0.4s;
+  }
+  .alert.show { transform: translateY(0) scale(1); opacity: 1; }
+  .alert img { width: 120px; height: 120px; border-radius: 50%; border: 4px solid var(--gold); flex-shrink: 0; animation: wiggle 1.2s ease-in-out infinite; }
+  @keyframes wiggle { 0%, 100% { transform: rotate(-6deg); } 50% { transform: rotate(6deg); } }
+  .alert .kind { font-size: 26px; color: var(--gold); letter-spacing: 0.2em; }
+  .alert .who { font-size: 54px; font-weight: 800; line-height: 1.25; word-break: break-all; }
+  .alert .msg { font-size: 28px; opacity: 0.9; margin-top: 4px; }
+  .burst { position: absolute; left: 50%; top: 190px; pointer-events: none; }
+  .burst i { position: absolute; font-style: normal; color: var(--gold); text-shadow: 0 0 12px var(--gold); animation: burst 1.6s ease-out forwards; }
+  @keyframes burst { from { opacity: 1; transform: translate(0, 0) scale(0.4); } to { opacity: 0; transform: translate(var(--dx), var(--dy)) scale(1.4) rotate(200deg); } }
+  /* ---- コメント ---- */
+  .chat { position: absolute; left: 230px; bottom: 420px; width: 520px; display: flex; flex-direction: column; gap: 10px; }
+  .bubble {
+    align-self: flex-start; max-width: 520px; padding: 12px 18px; border-radius: 22px 22px 22px 6px; box-sizing: border-box;
+    color: #fff; font-size: 26px; line-height: 1.45; word-break: break-word;
+    background: rgba(31, 26, 58, 0.82); border: 2px solid rgba(255, 236, 170, 0.5); box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+    animation: in 0.45s cubic-bezier(0.2, 1.4, 0.4, 1) both;
+  }
+  .bubble b { display: block; font-size: 19px; margin-bottom: 2px; }
+  .bubble.out { animation: out 0.6s ease forwards; }
+  @keyframes in { from { opacity: 0; transform: translateX(-60px) scale(0.8); } }
+  @keyframes out { to { opacity: 0; transform: translateY(-20px); } }
+  /* ---- 連携の案内(連携がすむと消える) ---- */
+  .setup {
+    position: absolute; right: 30px; top: 30px; width: 560px; padding: 20px 24px; border-radius: 18px; box-sizing: border-box;
+    background: rgba(31, 26, 58, 0.95); border: 2px solid var(--gold); color: #fff; font: 22px/1.6 "Yu Gothic UI", "Meiryo", sans-serif;
+  }
+  .setup code { display: inline-block; font-size: 44px; letter-spacing: 0.12em; color: var(--gold); margin: 6px 0; }
+</style>
+<script src="設定.js"></script>
+<script src="common/kanata.js"></script>
+</head>
+<body>
+  <div class="alert" id="alert"><img src="img/icon.png" alt="" /><div><div class="kind" id="kind"></div><div class="who" id="who"></div><div class="msg" id="msg"></div></div></div>
+  <div class="burst" id="burst"></div>
+  <div class="chat" id="chat"></div>
+  <div class="setup" id="setup" hidden></div>
+<script>
+  const C = K.C;
+  const $ = (id) => document.getElementById(id);
+  const obs = K.obs({
+    onEvent(type, d) {
+      // 操作パネルの「通知テスト」
+      if (type === "kanata" && d.type === "test") demo(d.what);
+    },
+  });
+  const tell = (data) => obs.broadcast(data); // ほかのカナタ部品(PNGTuber など)に知らせる
+
+  // ---------- 効果音(ファイル不要。その場で「キラーン」を作る) ----------
+  let ac;
+  function chime(kind) {
+    if (!C.alertSound) return;
+    try {
+      ac ||= new AudioContext();
+      const notes = kind === "chat" ? [1318.5] : kind === "raid" ? [523.3, 659.3, 784, 1046.5, 1318.5] : [784, 1046.5, 1318.5, 1568];
+      notes.forEach((f, i) => {
+        const o = ac.createOscillator();
+        const g = ac.createGain();
+        o.type = "sine";
+        o.frequency.value = f;
+        const t = ac.currentTime + i * 0.09;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(kind === "chat" ? 0.05 : 0.15, t + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t + 0.9);
+        o.connect(g).connect(ac.destination);
+        o.start(t);
+        o.stop(t + 1);
+      });
+    } catch {}
+  }
+
+  // ---------- 大きな通知(順番待ちで1つずつ) ----------
+  const LABEL = {
+    follow: ["NEW FOLLOWER", "フォローありがとう！", "🌙"],
+    sub: ["SUBSCRIBE", "サブスクありがとう！！", "👑"],
+    gift: ["GIFT SUB", "ギフトありがとう！！", "🎁"],
+    raid: ["RAID", "レイドありがとう！ようこそ〜！", "🚀"],
+    cheer: ["CHEER", "ビッツありがとう！", "💎"],
+  };
+  const queue = [];
+  let busy = false;
+  function alertShow(type, who, extra = "") {
+    queue.push({ type, who, extra });
+    if (!busy) next();
+  }
+  function next() {
+    const a = queue.shift();
+    if (!a) return (busy = false);
+    busy = true;
+    const [kind, msg, ico] = LABEL[a.type] || LABEL.follow;
+    $("kind").textContent = `${ico} ${kind}`;
+    $("who").textContent = `${a.who} さん`;
+    $("msg").textContent = a.extra ? `${a.extra} ${msg}` : msg;
+    $("alert").classList.add("show");
+    burst(a.type === "raid" ? 40 : 24);
+    chime(a.type);
+    tell({ type: a.type, who: a.who });
+    setTimeout(() => {
+      $("alert").classList.remove("show");
+      setTimeout(next, 800);
+    }, a.type === "raid" ? 7000 : 5000);
+  }
+  function burst(n) {
+    const b = $("burst");
+    for (let i = 0; i < n; i++) {
+      const s = document.createElement("i");
+      s.textContent = Math.random() < 0.7 ? "✦" : "★";
+      s.style.fontSize = 18 + Math.random() * 28 + "px";
+      const ang = Math.random() * Math.PI * 2;
+      const r = 250 + Math.random() * 350;
+      s.style.setProperty("--dx", Math.cos(ang) * r + "px");
+      s.style.setProperty("--dy", Math.sin(ang) * r * 0.6 + "px");
+      b.appendChild(s);
+      setTimeout(() => s.remove(), 1700);
+    }
+  }
+
+  // ---------- コメント ----------
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+  function chat(name, text, color) {
+    if (!C.showChat) return;
+    const el = document.createElement("div");
+    el.className = "bubble";
+    el.innerHTML = `<b style="color:${/^#[0-9a-f]{6}$/i.test(color) ? color : "#ffecaa"}">${esc(name)}</b>${esc(text)}`;
+    $("chat").appendChild(el);
+    while ($("chat").children.length > 5) $("chat").firstChild.remove();
+    setTimeout(() => {
+      el.classList.add("out");
+      setTimeout(() => el.remove(), 700);
+    }, 20000);
+    chime("chat");
+    tell({ type: "chat", who: name });
+  }
+
+  // ---------- Twitch チャット(ログイン不要の匿名読み取り) ----------
+  function twitchChat() {
+    const ch = (C.twitchChannel || "").toLowerCase().replace(/^#/, "");
+    if (!ch) return;
+    const ws = new WebSocket("wss://irc-ws.chat.twitch.tv:443");
+    ws.onopen = () => {
+      ws.send("CAP REQ :twitch.tv/tags twitch.tv/commands");
+      ws.send("PASS SCHMOOPIIE");
+      ws.send(`NICK justinfan${Math.floor(10000 + Math.random() * 80000)}`);
+      ws.send(`JOIN #${ch}`);
+    };
+    ws.onmessage = (e) => {
+      for (const line of e.data.split("\r\n")) {
+        if (!line) continue;
+        if (line.startsWith("PING")) {
+          ws.send("PONG :tmi.twitch.tv");
+          continue;
+        }
+        const m = /^(?:@(\S+) )?:(\S+) (\S+)(?: (\S+))?(?: :(.*))?$/.exec(line);
+        if (!m) continue;
+        const tags = Object.fromEntries((m[1] || "").split(";").map((kv) => kv.split("=")));
+        const name = tags["display-name"] || (m[2].split("!")[0] || "");
+        if (m[3] === "PRIVMSG") {
+          if (tags.bits) alertShow("cheer", name, `${tags.bits}ビッツ`);
+          else chat(name, m[5] || "", tags.color);
+        } else if (m[3] === "USERNOTICE") {
+          const id = tags["msg-id"];
+          if (id === "sub" || id === "resub") alertShow("sub", name, id === "resub" ? `${tags["msg-param-cumulative-months"] || ""}か月` : "");
+          else if (id === "subgift" || id === "submysterygift") alertShow("gift", name);
+          else if (id === "raid") alertShow("raid", tags["msg-param-displayName"] || name, `${tags["msg-param-viewerCount"] || ""}人で`);
+        }
+      }
+    };
+    ws.onclose = () => setTimeout(twitchChat, 5000);
+  }
+  twitchChat();
+
+  // ---------- フォロー通知(Twitch 連携が必要) ----------
+  // 1) 設定.js の twitchClientId があれば、画面に出るコードを twitch.tv/activate で入れるだけで連携(デバイスコード方式)
+  // 2) うまくいかない時は、手順書の「かんたんな方法」で取ったトークンを 設定.js の twitchToken に貼る
+  const TOKEN_KEY = "kanata_twitch";
+  const loadTok = () => {
+    try {
+      return JSON.parse(localStorage.getItem(TOKEN_KEY)) || null;
+    } catch {
+      return null;
+    }
+  };
+  const saveTok = (t) => {
+    try {
+      localStorage.setItem(TOKEN_KEY, JSON.stringify(t));
+    } catch {}
+  };
+  const form = (o) => new URLSearchParams(o);
+  const SCOPES = "moderator:read:followers";
+
+  async function getToken() {
+    if (C.twitchToken) return { access_token: C.twitchToken.replace(/^oauth:/, "") };
+    if (!C.twitchClientId) return null;
+    let t = loadTok();
+    if (t?.refresh_token && t.expires_at < Date.now() + 60000) {
+      const r = await fetch("https://id.twitch.tv/oauth2/token", { method: "POST", body: form({ client_id: C.twitchClientId, grant_type: "refresh_token", refresh_token: t.refresh_token }) });
+      if (r.ok) {
+        const j = await r.json();
+        t = { ...j, expires_at: Date.now() + j.expires_in * 1000 };
+        saveTok(t);
+      } else t = null;
+    }
+    if (t?.access_token) return t;
+    // デバイスコード方式: 画面にコードを出して待つ
+    const r = await fetch("https://id.twitch.tv/oauth2/device", { method: "POST", body: form({ client_id: C.twitchClientId, scopes: SCOPES }) });
+    if (!r.ok) throw new Error("device");
+    const d = await r.json();
+    $("setup").hidden = false;
+    $("setup").innerHTML = `🌙 フォロー通知の連携<br>スマホかPCで <b>${esc(d.verification_uri)}</b> を開いて、このコードを入れてね<br><code>${esc(d.user_code)}</code><br><small>(連携がすむと、この案内は消えます)</small>`;
+    const until = Date.now() + d.expires_in * 1000;
+    while (Date.now() < until) {
+      await new Promise((ok) => setTimeout(ok, (d.interval || 5) * 1000));
+      const p = await fetch("https://id.twitch.tv/oauth2/token", {
+        method: "POST",
+        body: form({ client_id: C.twitchClientId, scopes: SCOPES, device_code: d.device_code, grant_type: "urn:ietf:params:oauth:grant-type:device_code" }),
+      });
+      if (p.ok) {
+        const j = await p.json();
+        t = { ...j, expires_at: Date.now() + j.expires_in * 1000 };
+        saveTok(t);
+        $("setup").hidden = true;
+        return t;
+      }
+    }
+    $("setup").hidden = true;
+    return null;
+  }
+
+  async function follows() {
+    let tok;
+    try {
+      tok = await getToken();
+    } catch {
+      $("setup").hidden = false;
+      $("setup").textContent = "フォロー通知の連携ができませんでした。手順書の「かんたんな方法」を使ってね(コメント通知はこのまま使えます)";
+      return setTimeout(() => ($("setup").hidden = true), 20000);
+    }
+    if (!tok) return;
+    // トークンから自分の ID と Client ID を調べる
+    const v = await fetch("https://id.twitch.tv/oauth2/validate", { headers: { Authorization: `OAuth ${tok.access_token}` } });
+    if (!v.ok) {
+      saveTok(null);
+      return setTimeout(follows, 3000);
+    }
+    const info = await v.json();
+    const clientId = info.client_id;
+    const uid = info.user_id;
+    const es = new WebSocket("wss://eventsub.wss.twitch.tv/ws");
+    es.onmessage = async (e) => {
+      const m = JSON.parse(e.data);
+      const type = m.metadata?.message_type;
+      if (type === "session_welcome") {
+        await fetch("https://api.twitch.tv/helix/eventsub/subscriptions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${tok.access_token}`, "Client-Id": clientId, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            type: "channel.follow",
+            version: "2",
+            condition: { broadcaster_user_id: uid, moderator_user_id: uid },
+            transport: { method: "websocket", session_id: m.payload.session.id },
+          }),
+        });
+      } else if (type === "notification" && m.payload.subscription.type === "channel.follow") {
+        alertShow("follow", m.payload.event.user_name);
+      } else if (type === "session_reconnect") {
+        es.close();
+      }
+    };
+    es.onclose = () => setTimeout(follows, 5000);
+  }
+  follows();
+
+  // ---------- テスト ----------
+  function demo(what = "follow") {
+    const names = ["ほしのこ", "つきみ団子", "よるのさんぽ", "LoL好き"];
+    const n = names[Math.floor(Math.random() * names.length)];
+    if (what === "chat") chat(n, "こんばんは！今日もがんばって〜", "#9ad0ff");
+    else if (what === "raid") alertShow("raid", n, "12人で");
+    else if (what === "sub") alertShow("sub", n);
+    else alertShow(what, n);
+  }
+  if (new URLSearchParams(location.search).get("test")) {
+    let i = 0;
+    const order = ["chat", "follow", "chat", "sub", "raid", "chat"];
+    setInterval(() => demo(order[i++ % order.length]), 3500);
+  }
+</script>
+</body>
+</html>

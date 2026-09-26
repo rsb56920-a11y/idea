@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<title>夜華カナタ 配信画面</title>
+<!--
+  OBS のブラウザソース用(1920x1080)。URL の最後で画面を選ぶ:
+    scene.html?mode=soon   … まもなく
+    scene.html?mode=break  … 休憩
+    scene.html?mode=end    … おわり
+-->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=M+PLUS+Rounded+1c:wght@500;800&display=swap" />
+<style>
+  :root { --navy: #1f1a3a; --purple: #5b3fa8; --gold: #ffecaa; --ink: #f4f0ff; }
+  html, body { margin: 0; width: 1920px; height: 1080px; overflow: hidden; background: transparent; }
+  body {
+    font-family: "M PLUS Rounded 1c", "BIZ UDPGothic", "Yu Gothic UI", "Meiryo", sans-serif;
+    color: var(--ink);
+    background: radial-gradient(ellipse at 80% 110%, #4a2f8f 0%, transparent 55%), linear-gradient(160deg, #141033 0%, var(--navy) 45%, #2a1d57 100%);
+  }
+  #sky { position: absolute; inset: 0; width: 1920px; height: 1080px; }
+  .left { position: absolute; left: 150px; top: 250px; width: 1050px; }
+  .kicker { font-size: 34px; letter-spacing: 0.3em; color: var(--gold); opacity: 0.9; }
+  h1 {
+    margin: 14px 0 10px;
+    font-size: 116px;
+    font-weight: 800;
+    white-space: nowrap;
+    width: fit-content;
+    max-width: 1100px;
+    line-height: 1.15;
+    letter-spacing: 0.04em;
+    background: linear-gradient(100deg, #fff 0%, #fff 40%, var(--gold) 50%, #fff 60%, #fff 100%);
+    background-size: 300% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 4px 18px rgba(91, 63, 168, 0.9));
+    animation: shine 6s ease-in-out infinite;
+  }
+  @keyframes shine { 0%, 100% { background-position: 100% 0; } 50% { background-position: 0 0; } }
+  .sub { font-size: 40px; opacity: 0.85; }
+  .count { margin-top: 40px; font-size: 88px; font-weight: 800; color: var(--gold); letter-spacing: 0.08em; text-shadow: 0 0 24px rgba(255, 236, 170, 0.5); }
+  .count small { font-size: 34px; color: var(--ink); opacity: 0.8; margin-right: 18px; letter-spacing: 0.1em; }
+  .next {
+    display: inline-block;
+    margin-top: 44px;
+    padding: 18px 34px;
+    font-size: 36px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.08);
+    border: 2px solid rgba(255, 236, 170, 0.45);
+    backdrop-filter: blur(4px);
+  }
+  .clock { position: absolute; right: 70px; top: 44px; text-align: right; }
+  .clock .t { font-size: 64px; font-weight: 800; letter-spacing: 0.06em; }
+  .clock .d { font-size: 28px; opacity: 0.8; }
+  .name { position: absolute; left: 150px; bottom: 70px; }
+  .name b { font-size: 50px; color: var(--gold); letter-spacing: 0.1em; }
+  .name span { display: block; font-size: 26px; opacity: 0.75; margin-top: 4px; }
+  .ticker { position: absolute; left: 150px; width: 1000px; bottom: 190px; height: 50px; overflow: hidden; font-size: 32px; opacity: 0.9; }
+  .ticker div { transition: transform 0.8s ease, opacity 0.8s ease; }
+  .stage { position: absolute; right: 150px; bottom: -10px; width: 560px; height: 1000px; }
+  .chibi { position: absolute; left: 0; bottom: 0; width: 560px; height: 1000px; transform-origin: 50% 100%; }
+  .chibi-frame { position: absolute; left: 50%; bottom: 0; height: 960px; transform: translateX(-50%); transition: opacity 0.12s; filter: drop-shadow(0 16px 30px rgba(10, 5, 30, 0.6)); }
+  .shadow { position: absolute; left: 50%; bottom: 8px; width: 360px; height: 40px; margin-left: -180px; border-radius: 50%; background: radial-gradient(rgba(0, 0, 0, 0.45), transparent 70%); }
+  .bubble {
+    position: absolute; right: 520px; top: 200px; padding: 20px 34px; font-size: 42px; font-weight: 800; color: var(--navy);
+    background: var(--gold); border-radius: 40px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3); animation: pop 3s ease-in-out infinite;
+  }
+  .bubble::after { content: ""; position: absolute; right: 40px; bottom: -22px; border: 14px solid transparent; border-top: 16px solid var(--gold); }
+  @keyframes pop { 0%, 100% { transform: translateY(0) rotate(-2deg); } 50% { transform: translateY(-12px) rotate(2deg); } }
+  .zzz { position: absolute; right: 300px; top: 300px; font-size: 60px; font-weight: 800; color: var(--gold); }
+  .zzz span { position: absolute; opacity: 0; animation: zz 4.5s linear infinite; }
+  .zzz span:nth-child(2) { animation-delay: 1.5s; font-size: 46px; }
+  .zzz span:nth-child(3) { animation-delay: 3s; font-size: 36px; }
+  @keyframes zz { 0% { opacity: 0; transform: translate(0, 0); } 20% { opacity: 1; } 100% { opacity: 0; transform: translate(60px, -110px); } }
+  .fadein { animation: fadein 1.2s ease both; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(20px); } }
+</style>
+<script src="設定.js"></script>
+<script src="common/kanata.js"></script>
+</head>
+<body>
+  <canvas id="sky"></canvas>
+  <div class="clock"><div class="t" id="time"></div><div class="d" id="date"></div></div>
+  <div class="left fadein">
+    <div class="kicker" id="kicker"></div>
+    <h1 id="title"></h1>
+    <div class="sub" id="sub"></div>
+    <div class="count" id="count" hidden></div>
+    <div class="next" id="next"></div>
+  </div>
+  <div class="stage">
+    <div class="shadow"></div>
+    <div class="chibi" id="chibi"></div>
+  </div>
+  <div class="bubble" id="bubble" hidden></div>
+  <div class="zzz" id="zzz" hidden><span>Z</span><span>z</span><span>z</span></div>
+  <div class="name"><b id="name"></b><span id="links"></span></div>
+  <div class="ticker"><div id="msg"></div></div>
+<script>
+  const C = K.C;
+  const mode = new URLSearchParams(location.search).get("mode") || "soon";
+  const $ = (id) => document.getElementById(id);
+  const TEXT = {
+    soon: { kicker: "COMING SOON", title: C.soonTitle, sub: C.gameTitle },
+    break: { kicker: "BREAK TIME", title: C.breakTitle, sub: "すぐもどるね。そのまま待っててね" },
+    end: { kicker: "THANK YOU", title: C.endTitle, sub: C.endSub },
+  }[mode];
+  $("kicker").textContent = TEXT.kicker;
+  $("title").textContent = TEXT.title;
+  // 長い題名は1行におさまるまで文字を小さくする
+  for (let fs = 116; fs > 60 && $("title").scrollWidth > 1100; fs -= 4) $("title").style.fontSize = fs + "px";
+  $("sub").textContent = TEXT.sub;
+  $("next").textContent = C.nextStream ? `🌙 ${C.nextStream}` : "";
+  $("next").hidden = !C.nextStream;
+  $("name").textContent = C.name;
+  $("links").textContent = C.links;
+
+  // 夜空: 画面ごとに少しずつ雰囲気を変える
+  const sky = K.sky($("sky"), {
+    stars: 170,
+    shooting: mode === "end" ? 0.9 : 0.45,
+    petals: mode === "break" ? 6 : 12,
+    moon: { x: 0.5, y: 0.12, r: 46 },
+  });
+
+  const ch = K.chibi($("chibi"), {
+    open_closed: "img/chibi_open_closed.png",
+    blink_closed: "img/chibi_blink_closed.png",
+    open_talk: "img/chibi_open_talk.png",
+    blink_talk: "img/chibi_blink_talk.png",
+    angry: "img/chibi_angry.png",
+    sad: "img/chibi_sad.png",
+  }, { bob: 8, breathe: 0.01 });
+
+  // 休憩: ねむねむ(目をとじて、ときどき起きる)/おわり: 「またね」のふきだし
+  if (mode === "break") {
+    $("zzz").hidden = false;
+    const sleepy = () => {
+      ch.setExpr("blink_closed");
+      setTimeout(() => ch.setExpr("normal"), 9000);
+    };
+    sleepy();
+    setInterval(sleepy, 12000);
+  }
+  if (mode === "end") {
+    $("bubble").hidden = false;
+    $("bubble").textContent = "またね〜！";
+  }
+  if (mode === "soon") {
+    $("bubble").hidden = false;
+    $("bubble").textContent = "待っててね♪";
+  }
+
+  // カウントダウン(設定.js の startTime)
+  function countdown() {
+    if (mode !== "soon" || !/^\d{1,2}:\d{2}$/.test(C.startTime || "")) return;
+    const [h, m] = C.startTime.split(":").map(Number);
+    const target = new Date();
+    target.setHours(h, m, 0, 0);
+    let s = Math.round((target - new Date()) / 1000);
+    const el = $("count");
+    el.hidden = false;
+    if (s <= 0) return (el.innerHTML = "<small>START</small>まもなく!");
+    const p = (n) => String(n).padStart(2, "0");
+    el.innerHTML = `<small>あと</small>${s >= 3600 ? Math.floor(s / 3600) + ":" : ""}${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`;
+  }
+
+  // ひとことメッセージを順番に
+  let mi = 0;
+  function nextMsg() {
+    const list = C.messages || [];
+    if (!list.length) return;
+    const el = $("msg");
+    el.style.opacity = 0;
+    el.style.transform = "translateY(30px)";
+    setTimeout(() => {
+      el.textContent = list[mi++ % list.length];
+      el.style.opacity = 1;
+      el.style.transform = "translateY(0)";
+    }, 800);
+  }
+  nextMsg();
+  setInterval(nextMsg, 7000);
+
+  let lastSec = -1;
+  K.loop((t) => {
+    sky.draw(t);
+    ch.update(t);
+    const s = Math.floor(t);
+    if (s !== lastSec) {
+      lastSec = s;
+      const c = K.clock();
+      $("time").textContent = c.time;
+      $("date").textContent = c.date;
+      countdown();
+    }
+  });
+</script>
+</body>
+</html>

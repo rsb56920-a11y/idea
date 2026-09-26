@@ -1,0 +1,1053 @@
+{
+  "current_scene": "① まもなく",
+  "current_program_scene": "① まもなく",
+  "scene_order": [
+    {
+      "name": "① まもなく"
+    },
+    {
+      "name": "② ゲーム"
+    },
+    {
+      "name": "③ 休憩"
+    },
+    {
+      "name": "④ おわり"
+    }
+  ],
+  "name": "夜華カナタ配信セット",
+  "sources": [
+    {
+      "id": "browser_source",
+      "versioned_id": "browser_source",
+      "name": "画面_まもなく",
+      "settings": {
+        "is_local_file": true,
+        "local_file": "F:/夜華カナタ_配信セット/soon.html",
+        "width": 1920,
+        "height": 1080,
+        "fps": 30,
+        "fps_custom": true,
+        "shutdown": true,
+        "restart_when_active": false,
+        "reroute_audio": false,
+        "css": "body { background-color: rgba(0, 0, 0, 0); margin: 0px auto; overflow: hidden; }"
+      },
+      "mixers": 0,
+      "enabled": true,
+      "flags": 0,
+      "volume": 1.0,
+      "muted": false,
+      "sync": 0,
+      "hotkeys": {},
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "id": "browser_source",
+      "versioned_id": "browser_source",
+      "name": "画面_休憩",
+      "settings": {
+        "is_local_file": true,
+        "local_file": "F:/夜華カナタ_配信セット/break.html",
+        "width": 1920,
+        "height": 1080,
+        "fps": 30,
+        "fps_custom": true,
+        "shutdown": true,
+        "restart_when_active": false,
+        "reroute_audio": false,
+        "css": "body { background-color: rgba(0, 0, 0, 0); margin: 0px auto; overflow: hidden; }"
+      },
+      "mixers": 0,
+      "enabled": true,
+      "flags": 0,
+      "volume": 1.0,
+      "muted": false,
+      "sync": 0,
+      "hotkeys": {},
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "id": "browser_source",
+      "versioned_id": "browser_source",
+      "name": "画面_おわり",
+      "settings": {
+        "is_local_file": true,
+        "local_file": "F:/夜華カナタ_配信セット/end.html",
+        "width": 1920,
+        "height": 1080,
+        "fps": 30,
+        "fps_custom": true,
+        "shutdown": true,
+        "restart_when_active": false,
+        "reroute_audio": false,
+        "css": "body { background-color: rgba(0, 0, 0, 0); margin: 0px auto; overflow: hidden; }"
+      },
+      "mixers": 0,
+      "enabled": true,
+      "flags": 0,
+      "volume": 1.0,
+      "muted": false,
+      "sync": 0,
+      "hotkeys": {},
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "id": "browser_source",
+      "versioned_id": "browser_source",
+      "name": "通知とコメント",
+      "settings": {
+        "is_local_file": true,
+        "local_file": "F:/夜華カナタ_配信セット/alerts.html",
+        "width": 1920,
+        "height": 1080,
+        "fps": 30,
+        "fps_custom": true,
+        "shutdown": true,
+        "restart_when_active": false,
+        "reroute_audio": true,
+        "css": "body { background-color: rgba(0, 0, 0, 0); margin: 0px auto; overflow: hidden; }"
+      },
+      "mixers": 255,
+      "enabled": true,
+      "flags": 0,
+      "volume": 1.0,
+      "muted": false,
+      "sync": 0,
+      "hotkeys": {},
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "id": "browser_source",
+      "versioned_id": "browser_source",
+      "name": "ちびカナタ_PNGTuber",
+      "settings": {
+        "is_local_file": true,
+        "local_file": "F:/夜華カナタ_配信セット/pngtuber.html",
+        "width": 500,
+        "height": 900,
+        "fps": 30,
+        "fps_custom": true,
+        "shutdown": true,
+        "restart_when_active": false,
+        "reroute_audio": false,
+        "css": "body { background-color: rgba(0, 0, 0, 0); margin: 0px auto; overflow: hidden; }"
+      },
+      "mixers": 0,
+      "enabled": true,
+      "flags": 0,
+      "volume": 1.0,
+      "muted": false,
+      "sync": 0,
+      "hotkeys": {},
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "id": "browser_source",
+      "versioned_id": "browser_source",
+      "name": "マップ隠し_ちびカナタ",
+      "settings": {
+        "is_local_file": true,
+        "local_file": "F:/夜華カナタ_配信セット/mapcover.html",
+        "width": 300,
+        "height": 360,
+        "fps": 20,
+        "fps_custom": true,
+        "shutdown": true,
+        "restart_when_active": false,
+        "reroute_audio": false,
+        "css": "body { background-color: rgba(0, 0, 0, 0); margin: 0px auto; overflow: hidden; }"
+      },
+      "mixers": 0,
+      "enabled": true,
+      "flags": 0,
+      "volume": 1.0,
+      "muted": false,
+      "sync": 0,
+      "hotkeys": {},
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "id": "browser_source",
+      "versioned_id": "browser_source",
+      "name": "名前プレート",
+      "settings": {
+        "is_local_file": true,
+        "local_file": "F:/夜華カナタ_配信セット/game-overlay.html",
+        "width": 520,
+        "height": 90,
+        "fps": 10,
+        "fps_custom": true,
+        "shutdown": true,
+        "restart_when_active": false,
+        "reroute_audio": false,
+        "css": "body { background-color: rgba(0, 0, 0, 0); margin: 0px auto; overflow: hidden; }"
+      },
+      "mixers": 0,
+      "enabled": true,
+      "flags": 0,
+      "volume": 1.0,
+      "muted": false,
+      "sync": 0,
+      "hotkeys": {},
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "id": "game_capture",
+      "versioned_id": "game_capture",
+      "name": "LoLの画面",
+      "settings": {
+        "capture_mode": "window",
+        "window": "League of Legends (TM) Client:RiotWindowClass:League of Legends.exe",
+        "priority": 2,
+        "capture_cursor": true,
+        "allow_transparency": false
+      },
+      "mixers": 0,
+      "enabled": true,
+      "flags": 0,
+      "volume": 1.0,
+      "muted": false,
+      "sync": 0,
+      "hotkeys": {},
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "id": "wasapi_input_capture",
+      "versioned_id": "wasapi_input_capture",
+      "name": "マイク",
+      "settings": {
+        "device_id": "default"
+      },
+      "mixers": 255,
+      "enabled": true,
+      "flags": 0,
+      "volume": 1.0,
+      "muted": false,
+      "sync": 0,
+      "hotkeys": {},
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "id": "wasapi_output_capture",
+      "versioned_id": "wasapi_output_capture",
+      "name": "デスクトップ音声",
+      "settings": {
+        "device_id": "default"
+      },
+      "mixers": 255,
+      "enabled": true,
+      "flags": 0,
+      "volume": 1.0,
+      "muted": false,
+      "sync": 0,
+      "hotkeys": {},
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "id": "scene",
+      "versioned_id": "scene",
+      "name": "① まもなく",
+      "settings": {
+        "items": [
+          {
+            "name": "画面_まもなく",
+            "id": 1,
+            "visible": true,
+            "locked": false,
+            "rot": 0.0,
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "align": 5,
+            "bounds_type": 0,
+            "bounds_align": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_method": "default",
+            "blend_type": "normal",
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "private_settings": {}
+          },
+          {
+            "name": "通知とコメント",
+            "id": 2,
+            "visible": true,
+            "locked": false,
+            "rot": 0.0,
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "align": 5,
+            "bounds_type": 0,
+            "bounds_align": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_method": "default",
+            "blend_type": "normal",
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "private_settings": {}
+          },
+          {
+            "name": "マイク",
+            "id": 3,
+            "visible": true,
+            "locked": false,
+            "rot": 0.0,
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "align": 5,
+            "bounds_type": 0,
+            "bounds_align": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_method": "default",
+            "blend_type": "normal",
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "private_settings": {}
+          },
+          {
+            "name": "デスクトップ音声",
+            "id": 4,
+            "visible": true,
+            "locked": false,
+            "rot": 0.0,
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "align": 5,
+            "bounds_type": 0,
+            "bounds_align": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_method": "default",
+            "blend_type": "normal",
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "private_settings": {}
+          }
+        ],
+        "id_counter": 4,
+        "custom_size": false
+      },
+      "mixers": 0,
+      "enabled": true,
+      "flags": 0,
+      "volume": 1.0,
+      "muted": false,
+      "sync": 0,
+      "hotkeys": {},
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "id": "scene",
+      "versioned_id": "scene",
+      "name": "② ゲーム",
+      "settings": {
+        "items": [
+          {
+            "name": "LoLの画面",
+            "id": 1,
+            "visible": true,
+            "locked": false,
+            "rot": 0.0,
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "align": 5,
+            "bounds_type": 0,
+            "bounds_align": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_method": "default",
+            "blend_type": "normal",
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "private_settings": {}
+          },
+          {
+            "name": "名前プレート",
+            "id": 2,
+            "visible": true,
+            "locked": false,
+            "rot": 0.0,
+            "pos": {
+              "x": 16,
+              "y": 12
+            },
+            "scale": {
+              "x": 0.8,
+              "y": 0.8
+            },
+            "align": 5,
+            "bounds_type": 0,
+            "bounds_align": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_method": "default",
+            "blend_type": "normal",
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "private_settings": {}
+          },
+          {
+            "name": "ちびカナタ_PNGTuber",
+            "id": 3,
+            "visible": true,
+            "locked": false,
+            "rot": 0.0,
+            "pos": {
+              "x": 0,
+              "y": 330
+            },
+            "scale": {
+              "x": 0.36,
+              "y": 0.36
+            },
+            "align": 5,
+            "bounds_type": 0,
+            "bounds_align": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_method": "default",
+            "blend_type": "normal",
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "private_settings": {}
+          },
+          {
+            "name": "マップ隠し_ちびカナタ",
+            "id": 4,
+            "visible": true,
+            "locked": false,
+            "rot": 0.0,
+            "pos": {
+              "x": 1620,
+              "y": 720
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "align": 5,
+            "bounds_type": 0,
+            "bounds_align": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_method": "default",
+            "blend_type": "normal",
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "private_settings": {}
+          },
+          {
+            "name": "通知とコメント",
+            "id": 5,
+            "visible": true,
+            "locked": false,
+            "rot": 0.0,
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "align": 5,
+            "bounds_type": 0,
+            "bounds_align": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_method": "default",
+            "blend_type": "normal",
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "private_settings": {}
+          },
+          {
+            "name": "マイク",
+            "id": 6,
+            "visible": true,
+            "locked": false,
+            "rot": 0.0,
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "align": 5,
+            "bounds_type": 0,
+            "bounds_align": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_method": "default",
+            "blend_type": "normal",
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "private_settings": {}
+          },
+          {
+            "name": "デスクトップ音声",
+            "id": 7,
+            "visible": true,
+            "locked": false,
+            "rot": 0.0,
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "align": 5,
+            "bounds_type": 0,
+            "bounds_align": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_method": "default",
+            "blend_type": "normal",
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "private_settings": {}
+          }
+        ],
+        "id_counter": 7,
+        "custom_size": false
+      },
+      "mixers": 0,
+      "enabled": true,
+      "flags": 0,
+      "volume": 1.0,
+      "muted": false,
+      "sync": 0,
+      "hotkeys": {},
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "id": "scene",
+      "versioned_id": "scene",
+      "name": "③ 休憩",
+      "settings": {
+        "items": [
+          {
+            "name": "画面_休憩",
+            "id": 1,
+            "visible": true,
+            "locked": false,
+            "rot": 0.0,
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "align": 5,
+            "bounds_type": 0,
+            "bounds_align": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_method": "default",
+            "blend_type": "normal",
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "private_settings": {}
+          },
+          {
+            "name": "通知とコメント",
+            "id": 2,
+            "visible": true,
+            "locked": false,
+            "rot": 0.0,
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "align": 5,
+            "bounds_type": 0,
+            "bounds_align": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_method": "default",
+            "blend_type": "normal",
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "private_settings": {}
+          },
+          {
+            "name": "マイク",
+            "id": 3,
+            "visible": true,
+            "locked": false,
+            "rot": 0.0,
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "align": 5,
+            "bounds_type": 0,
+            "bounds_align": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_method": "default",
+            "blend_type": "normal",
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "private_settings": {}
+          },
+          {
+            "name": "デスクトップ音声",
+            "id": 4,
+            "visible": true,
+            "locked": false,
+            "rot": 0.0,
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "align": 5,
+            "bounds_type": 0,
+            "bounds_align": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_method": "default",
+            "blend_type": "normal",
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "private_settings": {}
+          }
+        ],
+        "id_counter": 4,
+        "custom_size": false
+      },
+      "mixers": 0,
+      "enabled": true,
+      "flags": 0,
+      "volume": 1.0,
+      "muted": false,
+      "sync": 0,
+      "hotkeys": {},
+      "monitoring_type": 0,
+      "private_settings": {}
+    },
+    {
+      "id": "scene",
+      "versioned_id": "scene",
+      "name": "④ おわり",
+      "settings": {
+        "items": [
+          {
+            "name": "画面_おわり",
+            "id": 1,
+            "visible": true,
+            "locked": false,
+            "rot": 0.0,
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "align": 5,
+            "bounds_type": 0,
+            "bounds_align": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_method": "default",
+            "blend_type": "normal",
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "private_settings": {}
+          },
+          {
+            "name": "通知とコメント",
+            "id": 2,
+            "visible": true,
+            "locked": false,
+            "rot": 0.0,
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "align": 5,
+            "bounds_type": 0,
+            "bounds_align": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_method": "default",
+            "blend_type": "normal",
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "private_settings": {}
+          },
+          {
+            "name": "マイク",
+            "id": 3,
+            "visible": true,
+            "locked": false,
+            "rot": 0.0,
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "align": 5,
+            "bounds_type": 0,
+            "bounds_align": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_method": "default",
+            "blend_type": "normal",
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "private_settings": {}
+          },
+          {
+            "name": "デスクトップ音声",
+            "id": 4,
+            "visible": true,
+            "locked": false,
+            "rot": 0.0,
+            "pos": {
+              "x": 0,
+              "y": 0
+            },
+            "scale": {
+              "x": 1.0,
+              "y": 1.0
+            },
+            "align": 5,
+            "bounds_type": 0,
+            "bounds_align": 0,
+            "bounds": {
+              "x": 0.0,
+              "y": 0.0
+            },
+            "crop_left": 0,
+            "crop_top": 0,
+            "crop_right": 0,
+            "crop_bottom": 0,
+            "group_item_backup": false,
+            "scale_filter": "disable",
+            "blend_method": "default",
+            "blend_type": "normal",
+            "show_transition": {
+              "duration": 0
+            },
+            "hide_transition": {
+              "duration": 0
+            },
+            "private_settings": {}
+          }
+        ],
+        "id_counter": 4,
+        "custom_size": false
+      },
+      "mixers": 0,
+      "enabled": true,
+      "flags": 0,
+      "volume": 1.0,
+      "muted": false,
+      "sync": 0,
+      "hotkeys": {},
+      "monitoring_type": 0,
+      "private_settings": {}
+    }
+  ],
+  "groups": [],
+  "quick_transitions": [],
+  "transitions": [],
+  "saved_projectors": [],
+  "current_transition": "フェード",
+  "transition_duration": 400,
+  "preview_locked": false,
+  "scaling_enabled": false,
+  "scaling_level": 0,
+  "scaling_off_x": 0.0,
+  "scaling_off_y": 0.0,
+  "modules": {}
+}

@@ -63,3 +63,9 @@ assert "__KOEKAWA_ASSETS" in html and "<style>" in html, "置き換えに失敗�
 with open(OUT, "w", encoding="utf-8") as f:
     f.write(html)
 print(OUT, f"{len(html) // 1024}KB")
+
+# 配信セットにも同じものを入れておく
+KANATA = os.path.join(ROOT, "夜華カナタ_配信セット", "コエカワ.html")
+if os.path.isdir(os.path.dirname(KANATA)):
+    with open(KANATA, "w", encoding="utf-8") as f:
+        f.write(html)

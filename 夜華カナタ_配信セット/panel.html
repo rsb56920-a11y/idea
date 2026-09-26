@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<title>カナタ操作パネル</title>
+<!-- OBS の「ドック」→「カスタムブラウザドック」に入れて使う操作パネル。
+     表情の切り替え・通知のテスト・シーンの切り替えができます。(ブラウザで開いても使えます) -->
+<style>
+  :root { --navy: #1f1a3a; --purple: #5b3fa8; --gold: #ffecaa; }
+  body { margin: 0; padding: 10px; background: #17132b; color: #eee; font: 14px "Yu Gothic UI", "Meiryo", sans-serif; }
+  h2 { font-size: 13px; color: var(--gold); margin: 12px 0 6px; letter-spacing: 0.1em; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 6px; }
+  button { padding: 10px 6px; border: 1px solid #3b3266; border-radius: 10px; background: #251f45; color: #fff; font: inherit; cursor: pointer; }
+  button:hover { background: #33296a; }
+  button.on { background: var(--purple); border-color: var(--gold); }
+  .st { font-size: 12px; padding: 6px 10px; border-radius: 8px; background: #3a1d28; color: #ffb3c3; }
+  .st.ok { background: #16332a; color: #9ff0c8; }
+  .hint { font-size: 11px; color: #a79fc2; line-height: 1.6; }
+  label { font-size: 12px; color: #a79fc2; }
+</style>
+<script src="設定.js"></script>
+<script src="common/kanata.js"></script>
+</head>
+<body>
+  <div class="st" id="st">OBSにつないでいます…</div>
+
+  <h2>🎭 表情</h2>
+  <div class="grid" id="expr">
+    <button data-e="normal" class="on">😊 ふつう</button>
+    <button data-e="angry">💢 おこ</button>
+    <button data-e="sad">💧 かなしい</button>
+    <button data-e="blink_closed">😌 目とじ</button>
+  </div>
+  <label><input type="checkbox" id="short" checked /> 5秒でふつうに戻す</label>
+  <p class="hint">このパネルをクリックしてから キーボードの 1〜4 でも切り替えられます。</p>
+
+  <h2>🎬 シーン</h2>
+  <div class="grid" id="scenes">
+    <button data-s="① まもなく">① まもなく</button>
+    <button data-s="② ゲーム">② ゲーム</button>
+    <button data-s="③ 休憩">③ 休憩</button>
+    <button data-s="④ おわり">④ おわり</button>
+  </div>
+
+  <h2>🔔 通知のテスト</h2>
+  <div class="grid" id="tests">
+    <button data-t="chat">💬 コメント</button>
+    <button data-t="follow">🌙 フォロー</button>
+    <button data-t="sub">👑 サブスク</button>
+    <button data-t="raid">🚀 レイド</button>
+  </div>
+  <p class="hint">テストの通知は配信にも映ります。配信前に試してね。</p>
+<script>
+  const st = document.getElementById("st");
+  const obs = K.obs({
+    onStatus(s) {
+      st.className = "st" + (s === "ok" ? " ok" : "");
+      st.textContent = s === "ok" ? "✅ OBSとつながっています" : s === "auth" ? "❌ OBSのパスワードがちがいます(設定.js)" : "OBSにつないでいます…(OBSを起動してね)";
+    },
+    onEvent(type, d) {
+      if (type === "CurrentProgramSceneChanged") mark(d.sceneName);
+    },
+  });
+  function mark(name) {
+    document.querySelectorAll("#scenes button").forEach((b) => b.classList.toggle("on", b.dataset.s === name));
+  }
+  function setExpr(e) {
+    const seconds = e !== "normal" && document.getElementById("short").checked ? 5 : 0;
+    obs.broadcast({ type: "expr", value: e, seconds });
+    document.querySelectorAll("#expr button").forEach((b) => b.classList.toggle("on", b.dataset.e === e));
+    if (seconds) setTimeout(() => document.querySelectorAll("#expr button").forEach((b) => b.classList.toggle("on", b.dataset.e === "normal")), seconds * 1000);
+  }
+  document.querySelectorAll("#expr button").forEach((b) => (b.onclick = () => setExpr(b.dataset.e)));
+  document.querySelectorAll("#scenes button").forEach((b) => (b.onclick = () => obs.request("SetCurrentProgramScene", { sceneName: b.dataset.s }).then(() => mark(b.dataset.s))));
+  document.querySelectorAll("#tests button").forEach((b) => (b.onclick = () => obs.broadcast({ type: "test", what: b.dataset.t })));
+  document.addEventListener("keydown", (e) => {
+    const map = { 1: "normal", 2: "angry", 3: "sad", 4: "blink_closed" };
+    if (map[e.key]) setExpr(map[e.key]);
+  });
+</script>
+</body>
+</html>

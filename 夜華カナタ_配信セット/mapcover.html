@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<title>ミニマップ隠し</title>
+<!-- OBS のブラウザソース用(幅 300 × 高さ 360)。ゲーム画面の右下(x=1620, y=720)に置く。
+     ちびカナタがまばたき・口パクし、パネルの上で星がきらめきます。表情は PNGTuber と連動。 -->
+<style>
+  html, body { margin: 0; width: 300px; height: 360px; overflow: hidden; background: transparent; }
+  .chibi { position: absolute; inset: 0; }
+  .chibi-frame { position: absolute; left: 0; top: 0; width: 300px; height: 360px; transition: opacity 0.1s; }
+  canvas { position: absolute; inset: 0; pointer-events: none; }
+  .label {
+    position: absolute; left: 0; right: 0; bottom: 14px; text-align: center; font: 800 18px "M PLUS Rounded 1c", "Yu Gothic UI", "Meiryo", sans-serif;
+    color: #ffecaa; letter-spacing: 0.12em; text-shadow: 0 0 8px rgba(91, 63, 168, 0.9);
+  }
+</style>
+<script src="設定.js"></script>
+<script src="common/kanata.js"></script>
+</head>
+<body>
+  <div class="chibi" id="chibi"></div>
+  <canvas id="sparkle" width="300" height="360"></canvas>
+  <div class="label" id="label"></div>
+<script>
+  // マップ隠しの絵はパネルごと描かれているので、揺らさずに まばたき・口パク・表情だけ動かす
+  const ch = K.chibi(document.getElementById("chibi"), {
+    open_closed: "img/map_open_closed.png",
+    blink_closed: "img/map_blink_closed.png",
+    open_talk: "img/map_open_talk.png",
+    blink_talk: "img/map_blink_talk.png",
+    angry: "img/map_angry.png",
+    sad: "img/map_sad.png",
+  }, { bob: 0, breathe: 0, talkBounce: 0 });
+  document.getElementById("label").textContent = K.C.name;
+  K.connectChibi(ch);
+
+  // パネルの上できらめく小さな星(軽いように 12 個だけ)
+  const g = document.getElementById("sparkle").getContext("2d");
+  const stars = Array.from({ length: 12 }, () => ({ x: 20 + Math.random() * 260, y: 30 + Math.random() * 280, ph: Math.random() * 6.28, sp: 1 + Math.random() * 2 }));
+  K.loop((t) => {
+    ch.update(t);
+    g.clearRect(0, 0, 300, 360);
+    for (const s of stars) {
+      const a = Math.max(0, Math.sin(t * s.sp + s.ph));
+      const L = 6 * a;
+      g.fillStyle = `rgba(255,236,170,${a * 0.9})`;
+      g.fillRect(s.x - L, s.y - 0.7, L * 2, 1.4);
+      g.fillRect(s.x - 0.7, s.y - L, 1.4, L * 2);
+    }
+  }, 20);
+</script>
+</body>
+</html>

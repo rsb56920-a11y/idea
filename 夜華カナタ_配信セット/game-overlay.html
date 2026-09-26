@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<title>ゲーム画面の名前プレート</title>
+<!-- OBS のブラウザソース用(幅 520 × 高さ 90・背景は透明)。ゲーム画面の左上に置く小さな名前と時計。 -->
+<style>
+  html, body { margin: 0; width: 520px; height: 90px; overflow: hidden; background: transparent; }
+  .plate {
+    position: absolute; left: 10px; top: 10px; height: 64px; padding: 0 22px 0 14px; display: flex; align-items: center; gap: 12px;
+    border-radius: 999px; background: rgba(31, 26, 58, 0.78); border: 2px solid rgba(255, 236, 170, 0.55); color: #fff;
+    font: 800 26px "M PLUS Rounded 1c", "Yu Gothic UI", "Meiryo", sans-serif; box-shadow: 0 0 18px rgba(91, 63, 168, 0.6);
+  }
+  .plate img { width: 46px; height: 46px; border-radius: 50%; }
+  .plate .t { font-size: 22px; color: #ffecaa; opacity: 0.9; }
+  .moon { display: inline-block; animation: sway 4s ease-in-out infinite; }
+  @keyframes sway { 50% { transform: rotate(-14deg) translateY(-2px); } }
+</style>
+<script src="設定.js"></script>
+<script src="common/kanata.js"></script>
+</head>
+<body>
+  <div class="plate"><img src="img/icon.png" alt="" /><span id="name"></span><span class="moon">🌙</span><span class="t" id="t"></span></div>
+<script>
+  document.getElementById("name").textContent = K.C.name;
+  const tick = () => (document.getElementById("t").textContent = K.clock().time.slice(0, 5));
+  tick();
+  setInterval(tick, 5000);
+</script>
+</body>
+</html>

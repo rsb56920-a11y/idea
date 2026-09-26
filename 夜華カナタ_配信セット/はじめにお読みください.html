@@ -1,0 +1,219 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>夜華カナタ 配信セット 手順書</title>
+<style>
+  :root { --navy: #1f1a3a; --purple: #5b3fa8; --gold: #ffecaa; --ink: #2a2440; --bg: #f7f4ff; --card: #fff; --line: #ddd5f5; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "BIZ UDPGothic", "Yu Gothic UI", "Meiryo", sans-serif; font-size: 18px; line-height: 1.85; }
+  header { background: linear-gradient(135deg, var(--navy), var(--purple)); color: #fff; padding: 36px 20px 30px; text-align: center; }
+  header h1 { margin: 0; font-size: 32px; letter-spacing: 0.08em; }
+  header p { margin: 8px 0 0; color: var(--gold); }
+  main { max-width: 860px; margin: 0 auto; padding: 20px 16px 80px; }
+  nav { background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 12px 22px; }
+  nav ol { margin: 6px 0; padding-left: 1.4em; }
+  a { color: var(--purple); }
+  section { background: var(--card); border: 2px solid var(--line); border-radius: 16px; padding: 6px 24px 18px; margin-top: 22px; }
+  h2 { color: var(--purple); border-bottom: 3px solid var(--gold); padding-bottom: 4px; font-size: 24px; }
+  h3 { font-size: 20px; margin-bottom: 4px; }
+  ol.steps > li { margin: 10px 0; }
+  .k { display: inline-block; padding: 0 8px; border: 1px solid #b9aee0; border-bottom-width: 3px; border-radius: 6px; background: #faf8ff; font-size: 16px; }
+  .m { background: #efe9ff; border-radius: 6px; padding: 1px 6px; font-weight: bold; }
+  code { background: #2a2440; color: var(--gold); border-radius: 6px; padding: 2px 8px; font-size: 16px; word-break: break-all; }
+  .ok, .warn, .tip { border-radius: 12px; padding: 10px 16px; margin: 12px 0; }
+  .ok { background: #e9fbef; border-left: 6px solid #3bb56a; }
+  .warn { background: #fff4e5; border-left: 6px solid #f0a030; }
+  .tip { background: #f1edff; border-left: 6px solid var(--purple); }
+  table { border-collapse: collapse; width: 100%; font-size: 16px; }
+  th, td { border: 1px solid var(--line); padding: 6px 10px; text-align: left; vertical-align: top; }
+  th { background: #f1edff; }
+  @media (max-width: 600px) { body { font-size: 16px; } section { padding: 4px 14px 14px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>🌙 夜華カナタ 配信セット</h1>
+  <p>むりょう・かるい・Pythonなし。ダブルクリックとコピペだけで使えます</p>
+</header>
+<main>
+<nav>
+  <b>もくじ</b>(上から順にやればOK。<b>1〜4 だけで配信できます</b>)
+  <ol>
+    <li><a href="#s1">フォルダを F ドライブに置く</a></li>
+    <li><a href="#s2">OBS にシーンを読みこむ</a></li>
+    <li><a href="#s3">OBS のパスワードを 設定.js に書く(口パク・表情に必要)</a></li>
+    <li><a href="#s4">操作パネルを OBS に出す</a></li>
+    <li><a href="#s5">文字や次回予告を変える</a></li>
+    <li><a href="#s6">フォロー通知を使う(やりたい時だけ)</a></li>
+    <li><a href="#s7">ボイスチェンジャー「コエカワ」を使う(やりたい時だけ)</a></li>
+    <li><a href="#s8">かるく配信する OBS 設定(VRAM 4GB 向け)</a></li>
+    <li><a href="#s9">こまったとき</a></li>
+  </ol>
+</nav>
+
+<section>
+  <h2>このセットでできること</h2>
+  <table>
+    <tr><th>ファイル</th><th>なにをするもの</th></tr>
+    <tr><td>soon / break / end .html</td><td>「まもなく」「休憩」「おわり」の画面。星が流れて、月下美人の花びらが舞い、時計・次回予告・ちびカナタが動きます</td></tr>
+    <tr><td>pngtuber.html</td><td>ちびカナタ。マイクの声で口パク、自動でまばたき、パネルやキー 1〜4 で表情チェンジ。大声を出すと自動で「おこ」顔</td></tr>
+    <tr><td>mapcover.html</td><td>LoL のミニマップをかくす、ちびカナタのパネル(こちらも口パク・まばたき)</td></tr>
+    <tr><td>alerts.html</td><td>Twitch のコメントを吹き出しで表示。フォロー・サブスク・レイド・ビッツで演出と音</td></tr>
+    <tr><td>game-overlay.html</td><td>ゲーム中の名前プレートと時計</td></tr>
+    <tr><td>panel.html</td><td>OBS の中に出す操作パネル(表情・シーン切りかえ・テスト)</td></tr>
+    <tr><td>コエカワ.html</td><td>自分の声に合わせて自然に変えるボイスチェンジャー(無料・オフラインで動く)</td></tr>
+    <tr><td>設定.js</td><td>名前・文字・パスワードなどを書くファイル。<b>メモ帳で開いて書きかえるだけ</b></td></tr>
+  </table>
+  <div class="tip">💡 ターミナル(黒い画面)は<b>一度も使いません</b>。Python もいりません。</div>
+</section>
+
+<section id="s1">
+  <h2>1. フォルダを F ドライブに置く</h2>
+  <ol class="steps">
+    <li>ダウンロードした <span class="m">夜華カナタ_配信セット.zip</span> を右クリック →<span class="m">すべて展開</span>。</li>
+    <li>展開先を <code>F:\</code> にして「展開」。</li>
+    <li>エクスプローラーで <code>F:\夜華カナタ_配信セット\</code> を開いて、中に <span class="m">soon.html</span> や <span class="m">設定.js</span> があれば成功です。</li>
+  </ol>
+  <div class="warn">⚠️ <b>場所と名前はこのままにしてください。</b><code>F:\夜華カナタ_配信セット\夜華カナタ_配信セット\</code> のように二重になっていたら、中のフォルダを F:\ の直下に移動してください。<br>別の場所に置きたい時は、OBS に読みこんだあとで各ソースの「ローカルファイル」を選び直せば動きます。</div>
+</section>
+
+<section id="s2">
+  <h2>2. OBS にシーンを読みこむ</h2>
+  <ol class="steps">
+    <li>OBS を開いて、上のメニューの <span class="m">シーンコレクション</span> → <span class="m">インポート</span>。</li>
+    <li>右の「…」ボタンで <code>F:\夜華カナタ_配信セット\OBS読みこみ用_夜華カナタ配信セット.json</code> を選び、左のチェックを入れて <span class="m">インポート</span>。</li>
+    <li>メニューの <span class="m">シーンコレクション</span> → <span class="m">夜華カナタ配信セット</span> をクリック。</li>
+    <li>左下の「シーン」に <b>① まもなく / ② ゲーム / ③ 休憩 / ④ おわり</b> が出たら完了です。</li>
+  </ol>
+  <div class="ok">✅ 星が動く画面が出ていれば成功!(まだ口パクはしません。次の3へ)</div>
+  <div class="tip">💡 ② ゲームの「LoLの画面」は、LoL の試合がはじまると自動で映ります。ロビー画面は映らないことがありますが正常です。</div>
+</section>
+
+<section id="s3">
+  <h2>3. OBS のパスワードを 設定.js に書く</h2>
+  <p>口パク・表情・通知の連動は、OBS の「WebSocket」という機能でつながります。</p>
+  <ol class="steps">
+    <li>OBS のメニュー <span class="m">ツール</span> → <span class="m">WebSocket サーバー設定</span>。</li>
+    <li><span class="m">WebSocket サーバーを有効にする</span> にチェック。ポートは <code>4455</code> のまま。</li>
+    <li><span class="m">接続情報を表示</span> → <span class="m">サーバーパスワード</span> の横の「コピー」。</li>
+    <li><code>F:\夜華カナタ_配信セット\設定.js</code> を右クリック → <span class="m">プログラムから開く</span> → <span class="m">メモ帳</span>。</li>
+    <li><code>obsPassword: "",</code> の <b>" " の中</b>に貼りつけ(<span class="k">Ctrl</span>+<span class="k">V</span>)。例: <code>obsPassword: "AbCd1234xyz",</code></li>
+    <li><span class="k">Ctrl</span>+<span class="k">S</span> で上書き保存。</li>
+    <li>OBS のマイクの名前が「マイク」でないとき(音声ミキサーに出ている名前がちがうとき)は、<code>micName: "マイク",</code> もその名前に書きかえます。</li>
+    <li>OBS を一度とじて、もう一度ひらきます。</li>
+  </ol>
+  <div class="ok">✅ ② ゲームのシーンで声を出して、左のちびカナタの口が動けば成功!</div>
+  <div class="tip">💡 口が動きすぎる/動かない時は <code>mouthThresholdDb: -38,</code> の数字を変えます。<b>-30</b> にすると反応しにくく、<b>-45</b> にすると反応しやすくなります。<br>💡 パスワードがまちがっていると、ちびカナタの下に「OBSのパスワードがちがうよ」と出ます。</div>
+</section>
+
+<section id="s4">
+  <h2>4. 操作パネルを OBS に出す</h2>
+  <ol class="steps">
+    <li>OBS のメニュー <span class="m">ドック</span> → <span class="m">カスタムブラウザドック</span>。</li>
+    <li>ドック名に <code>カナタ</code>、URL に <code>file:///F:/夜華カナタ_配信セット/panel.html</code> を貼って <span class="m">適用</span>。</li>
+    <li>出てきた小さな窓を、OBS の好きな場所へドラッグして置きます。</li>
+  </ol>
+  <p>パネルでできること:</p>
+  <ul>
+    <li><b>表情</b>: ふつう / おこ / しょんぼり / 目とじ(「5秒でもどす」にチェックで自動でもどります)。パネルをクリックしてからキー <span class="k">1</span>〜<span class="k">4</span> でも変わります。</li>
+    <li><b>シーン</b>: ①〜④ をワンクリックで切りかえ。</li>
+    <li><b>テスト</b>: コメント・フォロー・サブスク・レイドの演出を、配信前にためせます。</li>
+  </ul>
+  <div class="tip">💡 OBS のブラウザソースは「ゲーム中に押したキー」を受け取れないしくみです。ゲーム中に表情を変えたい時は、OBS のホットキー(設定 → ホットキー)ではなく、<b>パネルのボタン</b>を使ってください。</div>
+</section>
+
+<section id="s5">
+  <h2>5. 文字や次回予告を変える</h2>
+  <p><code>設定.js</code> をメモ帳で開いて、" " の中を書きかえて保存 → OBS でそのソースを右クリック → <span class="m">更新</span>(または OBS 再起動)。</p>
+  <table>
+    <tr><th>書くところ</th><th>変わるところ</th></tr>
+    <tr><td><code>soonTitle</code> / <code>breakTitle</code> / <code>endTitle</code></td><td>各画面の大きな題名</td></tr>
+    <tr><td><code>gameTitle</code> / <code>endSub</code></td><td>題名の下の小さな文字</td></tr>
+    <tr><td><code>startTime</code></td><td>「まもなく」のカウントダウン。<code>"21:00"</code> のように書く。使わないなら <code>""</code></td></tr>
+    <tr><td><code>nextStream</code></td><td>次回予告(例: <code>"次回:金曜 21:00〜 LoL"</code>)</td></tr>
+    <tr><td><code>messages</code></td><td>下で順番に流れるひとこと。行をふやしてもOK</td></tr>
+    <tr><td><code>showChat</code> / <code>alertSound</code></td><td>コメント表示・通知音のオン(true)/オフ(false)</td></tr>
+  </table>
+  <div class="warn">⚠️ " や , を消してしまうと動かなくなります。うまく動かなくなったら、zip からもう一度 設定.js を取り出して書き直せば元にもどります。</div>
+</section>
+
+<section id="s6">
+  <h2>6. フォロー通知を使う(やりたい時だけ)</h2>
+  <p><b>コメント・サブスク・レイド・ビッツの通知は、設定なしですぐ使えます。</b>フォロー通知だけは Twitch のきまりで「アプリ登録」がいります(無料・5分ほど)。</p>
+  <h3>① Twitch にアプリを登録する</h3>
+  <ol class="steps">
+    <li><a href="https://dev.twitch.tv/console/apps" target="_blank">https://dev.twitch.tv/console/apps</a> を開いて Twitch でログイン(はじめての時は「2段階認証」の設定を求められます)。</li>
+    <li><span class="m">アプリケーションを登録</span>。名前は <code>kanata-overlay</code> など何でもOK。</li>
+    <li>OAuth のリダイレクト URL に <code>http://localhost</code>、カテゴリは <span class="m">Broadcaster Suite</span>、クライアントの種類は <span class="m">公開(Public)</span>。</li>
+    <li>作成したアプリの <span class="m">管理</span> を開き、<b>クライアント ID</b> をコピー。</li>
+    <li>設定.js の <code>twitchClientId: "",</code> の " " の中に貼って保存。</li>
+  </ol>
+  <h3>② 連携する(ふつうの方法)</h3>
+  <ol class="steps">
+    <li>OBS を再起動すると、配信画面の真ん中に「コードを入れてね」という案内が出ます。</li>
+    <li>スマホかパソコンで案内の URL を開き、表示されたコードを入れて <span class="m">許可</span>。</li>
+    <li>案内が消えたら完了。次からは自動でつながります。</li>
+  </ol>
+  <h3>③ ②がうまくいかない時の「かんたんな方法」</h3>
+  <ol class="steps">
+    <li>下の URL の <code>ここにクライアントID</code> を自分のクライアント ID に置きかえて、ブラウザで開きます。<br><code>https://id.twitch.tv/oauth2/authorize?client_id=ここにクライアントID&amp;redirect_uri=http://localhost&amp;response_type=token&amp;scope=moderator:read:followers</code></li>
+    <li><span class="m">許可</span> を押すと「このサイトにアクセスできません」という画面になりますが、<b>それで正しい</b>です。</li>
+    <li>そのときのアドレスバーの <code>access_token=</code> のうしろから <code>&amp;</code> の前までをコピー。</li>
+    <li>設定.js の <code>twitchToken: "",</code> の " " の中に貼って保存 → OBS 再起動。</li>
+  </ol>
+  <div class="warn">🔒 クライアント ID は人に見られても大丈夫ですが、<b>トークン(twitchToken)は他の人に見せないでください</b>。配信画面に 設定.js を映さないよう注意。トークンは2か月ほどで切れるので、その時は③をもう一度。</div>
+  <div class="tip">💡 配信前の確認は、パネルの「テスト」ボタンで演出を出せます。</div>
+</section>
+
+<section id="s7">
+  <h2>7. ボイスチェンジャー「コエカワ」を使う(やりたい時だけ)</h2>
+  <p><code>コエカワ.html</code> をダブルクリックすると、ブラウザ(Edge か Chrome)で開きます。インターネットなしで動き、お金もかかりません。</p>
+  <ol class="steps">
+    <li>開いたら <span class="m">あなたの声を測る(あなた専用の設定を作る)</span> を押して、案内どおり少ししゃべります。自分の声の高さ・声のひびきに合わせて、自然になるよう自動で調整されます。</li>
+    <li>なりたい声(女の子・美少年・イケボ など)を選んで <span class="m">▶ 変換スタート</span>。</li>
+  </ol>
+  <h3>OBS に変えた声をのせる</h3>
+  <ol class="steps">
+    <li>無料の <a href="https://vb-audio.com/Cable/" target="_blank">VB-CABLE</a> をインストール(パソコン再起動)。</li>
+    <li>コエカワの <span class="m">出力先</span> を <span class="m">CABLE Input</span> にする。</li>
+    <li>OBS の「マイク」ソースを右クリック → <span class="m">プロパティ</span> → デバイスを <span class="m">CABLE Output</span> に変更。</li>
+    <li>設定.js の <code>micName</code> は「マイク」のままでOK(口パクも変えた声で動きます)。</li>
+  </ol>
+  <div class="tip">💡 Discord で使う時も、Discord の入力デバイスを <span class="m">CABLE Output</span> にするだけです。<br>💡 声を変えない配信の日は、OBS のマイクのデバイスを元のマイクにもどしてください。</div>
+  <div class="warn">⚠️ 実在の人の声のまねを、本人の許可なく使うのはやめましょう。</div>
+</section>
+
+<section id="s8">
+  <h2>8. かるく配信する OBS 設定(RTX 3050 Laptop / VRAM 4GB 向け)</h2>
+  <p>このセットは <b>1秒30コマ以下</b>・<b>見えていない画面は自動で止まる</b> ように作ってあるので、LoL と同時でも軽く動きます。OBS 側もこうしておくと安心です。</p>
+  <table>
+    <tr><th>場所</th><th>おすすめ</th></tr>
+    <tr><td>設定 → 映像 → 基本(キャンバス)解像度</td><td>1920x1080</td></tr>
+    <tr><td>設定 → 映像 → 出力(スケーリング)解像度</td><td><b>1280x720</b>(余裕があれば 1600x900)</td></tr>
+    <tr><td>設定 → 映像 → FPS</td><td>30(なめらかさ重視なら 60)</td></tr>
+    <tr><td>設定 → 出力 → 映像エンコーダ</td><td><b>NVIDIA NVENC H.264</b>(CPU を使わない)</td></tr>
+    <tr><td>設定 → 出力 → ビットレート</td><td>720p30 なら 3500〜4500 Kbps</td></tr>
+    <tr><td>設定 → 詳細設定 → プロセス優先度</td><td>「通常より上」</td></tr>
+    <tr><td>OBS のアイコンを右クリック</td><td>「管理者として実行」で起動すると、ゲーム中のカクつきが減ります</td></tr>
+    <tr><td>LoL 側</td><td>フレームレート上限を 144 か 120 にしておく(無制限だと GPU が足りなくなりやすい)</td></tr>
+  </table>
+  <div class="tip">💡 さらに軽くしたい時: ブラウザソースを右クリック → プロパティ → FPS を 30 → 20 に下げても見た目はほとんど変わりません。</div>
+</section>
+
+<section id="s9">
+  <h2>9. こまったとき</h2>
+  <table>
+    <tr><th>こまりごと</th><th>やること</th></tr>
+    <tr><td>画面が真っ黒/何も出ない</td><td>フォルダの場所が <code>F:\夜華カナタ_配信セット\</code> になっているか確認(1 を見てね)。</td></tr>
+    <tr><td>口パクしない</td><td>① 設定.js のパスワード ② <code>micName</code> が OBS の音声ミキサーの名前と同じか ③ WebSocket が有効か。</td></tr>
+    <tr><td>「OBSのパスワードがちがうよ」と出る</td><td>パスワードをもう一度コピーして貼り直し → 保存 → OBS 再起動。</td></tr>
+    <tr><td>コメントが出ない</td><td>設定.js の <code>twitchChannel</code> が自分のチャンネル名(小文字)か確認。</td></tr>
+    <tr><td>通知の音が配信にのらない</td><td>「通知とコメント」のプロパティで <span class="m">OBS を介して音声を制御</span> にチェック。</td></tr>
+    <tr><td>設定.js を変えたのに反映されない</td><td>ソースを右クリック → <span class="m">更新</span>、または OBS 再起動。</td></tr>
+    <tr><td>文字の形がちがう</td><td>インターネットにつながっていない時は、パソコンの標準の字で表示されます(動作は問題なし)。</td></tr>
+  </table>
+</section>
+</main>
+</body>
+</html>
