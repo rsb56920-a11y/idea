@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0f1115" />
+  <title>画像から動画メーカー</title>
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>🎬 画像から動画メーカー</h1>
+      <p class="muted">写真を入れるだけで、ゆっくり動くおしゃれな動画に。TikTok・リール・ショート向けの縦動画も作れます。画像はこのパソコンの中だけで処理します。</p>
+    </header>
+
+    <div class="layout">
+      <section class="settings">
+        <div class="card">
+          <h2>① 画像を入れる</h2>
+          <label class="drop" id="drop">
+            <input type="file" id="files" accept="image/*" multiple hidden />
+            <span>📷 ここをクリック、または画像をドラッグ＆ドロップ</span>
+          </label>
+          <div id="slides"></div>
+        </div>
+
+        <div class="card">
+          <h2>② 動画の形と動き</h2>
+          <label>サイズ
+            <select id="aspect">
+              <option value="9:16">縦 9:16(TikTok・リール・ショート)</option>
+              <option value="1:1">正方形 1:1(Instagram 投稿)</option>
+              <option value="16:9">横 16:9(YouTube)</option>
+            </select></label>
+          <label>画像の収め方
+            <select id="fit">
+              <option value="contain">全体を見せる(背景はぼかし)</option>
+              <option value="cover">画面いっぱいに広げる(はみ出しは切る)</option>
+            </select></label>
+          <label>動き(全体)
+            <select id="motion">
+              <option value="auto">おまかせ(1枚ずつ変える)</option>
+              <option value="zoomIn">ゆっくりズームイン</option>
+              <option value="zoomOut">ゆっくりズームアウト</option>
+              <option value="panLeft">左へ流れる</option>
+              <option value="panRight">右へ流れる</option>
+              <option value="panUp">上へ流れる</option>
+              <option value="none">動かさない</option>
+            </select></label>
+          <label>切り替え
+            <select id="transition">
+              <option value="fade">ふわっと(クロスフェード)</option>
+              <option value="slide">スライド</option>
+              <option value="zoom">ズーム</option>
+              <option value="flash">フラッシュ</option>
+              <option value="none">パッと切り替え</option>
+            </select></label>
+          <label>1枚の長さ <b id="durVal"></b>
+            <input type="range" id="dur" min="1.5" max="8" step="0.5" value="3" /></label>
+          <label class="check"><input type="checkbox" id="sparkle" /> ✨ キラキラを散らす</label>
+        </div>
+
+        <div class="card">
+          <h2>③ 音楽(任意)</h2>
+          <label class="btn file">🎵 音楽ファイルを選ぶ<input type="file" id="bgm" accept="audio/*" hidden /></label>
+          <p class="muted" id="bgmName">音楽なし</p>
+          <label>音量 <b id="volVal"></b><input type="range" id="vol" min="0" max="1" step="0.05" value="0.8" /></label>
+          <p class="hint">著作権のある曲を投稿に使うと、削除や収益化停止になることがあります。フリー音源か、各SNSの公式の音源機能を使ってください。</p>
+        </div>
+      </section>
+
+      <section class="preview card">
+        <div class="stage"><canvas id="canvas"></canvas></div>
+        <div class="bar"><div id="seek"></div></div>
+        <p class="muted center" id="timeLabel">0.0 / 0.0 秒</p>
+        <div class="row">
+          <button class="btn" id="play">▶ プレビュー</button>
+          <button class="btn main" id="export">⬇ 動画を書き出す</button>
+        </div>
+        <p class="hint center" id="exportNote"></p>
+        <div id="result"></div>
+      </section>
+    </div>
+  </div>
+  <div id="toast" role="status"></div>
+  <script type="module" src="/app.js"></script>
+</body>
+</html>

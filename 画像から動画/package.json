@@ -1,0 +1,11 @@
+{
+  "name": "image-to-video",
+  "version": "0.1.0",
+  "description": "画像から動画(スライドショー)を作るアプリ",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "MIT"
+}
