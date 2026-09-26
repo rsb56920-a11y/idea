@@ -29,6 +29,11 @@
       <h2><span class="num">2</span>なりたい声を選ぶ</h2>
       <div class="presets" id="presets"></div>
       <div class="mine-row" id="mine"></div>
+      <div class="ref">
+        <label class="btn small file">🎙 お手本の声に合わせる(録音ファイル)<input type="file" id="refFile" accept="audio/*" hidden /></label>
+        <span class="hint">なりたい声の録音から高さ・響き・抑揚を測って、あなたの声から近づける設定を作ります。使ってよい声だけにしてください(自分で録ったもの・許可を得たもの・フリー素材など)。</span>
+        <p class="hint" id="refInfo"></p>
+      </div>
       <details class="adjust" open>
         <summary>細かく調整する</summary>
         <label>声の高さ(ピッチ) <b id="pitchVal"></b>

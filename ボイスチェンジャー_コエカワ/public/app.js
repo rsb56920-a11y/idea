@@ -185,6 +185,38 @@ function renderPresets() {
   renderMine();
 }
 
+// ---------- お手本の声に合わせる ----------
+// 録音ファイルから、お手本の声の高さ・抑揚の幅・声道の長さを測り、あなたの声からそこへ行く設定を作る。
+// 声の「平均的な特徴」だけを合わせるもので、その人の声そのものをまねるものではない。
+async function matchReference(file) {
+  let prof = null;
+  try {
+    const ac = new AudioContext();
+    const buf = await ac.decodeAudioData(await file.arrayBuffer());
+    ac.close();
+    const mono = new Float32Array(buf.length);
+    for (let c = 0; c < buf.numberOfChannels; c++) buf.getChannelData(c).forEach((v, i) => (mono[i] += v / buf.numberOfChannels));
+    prof = profileVoice(mono, buf.sampleRate);
+  } catch {}
+  if (!prof) return toast("お手本の声をうまく分析できませんでした。声だけがはっきり入った5秒以上の録音を使ってください");
+  if (!state.f0) toast("先に「1. あなたの声を測る」をすると、もっと正確に合わせられます");
+  state.pitch = Math.round(semis(prof.f0 / myF0()) * 2) / 2;
+  // 声道が短いほど響きは高い: 倍率 = あなたの長さ / お手本の長さ
+  const myTract = state.tract || REF_TRACT;
+  state.formant = prof.tract ? Math.round(Math.min(1.35, Math.max(0.85, myTract / prof.tract)) * 100) / 100 : state.formant;
+  state.inton = state.range >= 0.8 && prof.range >= 0.5 ? Math.round(Math.min(1.6, Math.max(0.8, prof.range / state.range)) * 20) / 20 : 1;
+  state.preset = "custom";
+  persist();
+  renderControls();
+  pushParams();
+  $("#refInfo").textContent = `お手本:${prof.f0}Hz・抑揚 ${prof.range}半音・声道 ${prof.tract ?? "—"}cm → 設定に反映しました(気に入ったら「マイ設定」に保存)`;
+}
+$("#refFile").onchange = (e) => {
+  const f = e.target.files[0];
+  if (f) matchReference(f);
+  e.target.value = "";
+};
+
 // ---------- マイ設定(自分で調整した設定を名前をつけて保存) ----------
 const escHtml = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
 function renderMine() {
