@@ -85,11 +85,14 @@ class VoiceProcessor extends AudioWorkletProcessor {
     this.keepConsonants = true; // 子音(息の音)は高さを変えない
     this.fastOnset = true; // 声の始まりをすぐに判定する
     this.splitBand = true; // 2.5kHz 未満はいつも声の高さで動かす
+    this.voicedGain = true; // 音量合わせは声の部分だけで行う
     this.soft = 0; // やわらかさ(dB): 声の一番低い倍音(第1倍音)を強める。女性の声の特徴
     // 変換後の音量を元の声に合わせる(倍音の数が減ると小さく聞こえるため)
-    this.inPow = 1e-6;
-    this.outPow = 1e-6;
     this.gain = 1;
+    this.gainState = [
+      { inPow: 1e-6, outPow: 1e-6, gain: 1 }, // 子音・無声
+      { inPow: 1e-6, outPow: 1e-6, gain: 1 }, // 声
+    ];
     // ファイル変換では最初から設定を渡す(メッセージは届くのが遅れることがあるため)
     Object.assign(this, options?.processorOptions);
     this.port.onmessage = (e) => Object.assign(this, e.data);
@@ -150,13 +153,19 @@ class VoiceProcessor extends AudioWorkletProcessor {
         this.inFIFO[this.rover] = input[i];
         const dry = this.inFIFO[this.rover - (N - HOP)] ?? 0;
         let wet = this.outFIFO[this.rover - (N - HOP)];
-        // 約0.3秒の平均パワーで音量を合わせる。無音時は上げすぎない
+        // 約0.3秒の平均パワーで音量を元の声に合わせる。無音時は上げすぎない
+        // 声(母音)と子音で倍率を分ける(1つだと、声を戻す倍率で子音まで大きくなる)
         const a = 1 / (0.3 * sampleRate);
-        this.inPow += (dry * dry - this.inPow) * a;
-        this.outPow += (wet * wet - this.outPow) * a;
+        const v = this.voicing > 0.5 ? 1 : 0;
+        const st = this.voicedGain ? this.gainState[v] : this.gainState[1];
+        st.inPow += (dry * dry - st.inPow) * a;
+        st.outPow += (wet * wet - st.outPow) * a;
         const target =
-          this.inPow > 1e-7 && this.gateOpen ? Math.min(4, Math.max(0.5, Math.sqrt(this.inPow / (this.outPow + 1e-12)))) : this.gain;
-        this.gain += (target - this.gain) * a * 4;
+          st.inPow > 1e-7 && this.gateOpen ? Math.min(4, Math.max(0.25, Math.sqrt(st.inPow / (st.outPow + 1e-12)))) : st.gain;
+        st.gain += (target - st.gain) * a * 4;
+        // 切り替わりでぷつっとしないよう、使う倍率はなめらかに移す
+        const g = this.voicedGain ? this.gainState[1].gain * this.voicing + this.gainState[0].gain * (1 - this.voicing) : st.gain;
+        this.gain += (g - this.gain) * 0.01;
         wet *= this.gain;
         out[i] = wet * this.mix + dry * (1 - this.mix);
         this.rover++;
