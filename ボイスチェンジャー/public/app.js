@@ -8,12 +8,12 @@ import { detectF0, profileVoice } from "./voice-analysis.js";
 //   target: 変換後の声の高さ(Hz)  formant: 平均的な男性の声から見た響きの倍率
 //   range: その声らしい抑揚の幅(半音の標準偏差)  breath: 息っぽさ
 const PRESETS = [
-  { id: "girl", e: "🎀", name: "女の子", desc: "明るくかわいい10〜20代の声", target: 250, formant: 1.2, range: 3.0, breath: 0.35, bright: 3, lowcut: 180 },
-  { id: "sister", e: "💄", name: "お姉さん", desc: "落ち着いた大人の女性の声", target: 205, formant: 1.14, range: 2.6, breath: 0.3, bright: 2, lowcut: 150 },
-  { id: "boy", e: "✨", name: "美少年", desc: "澄んだ中性的な少年の声", target: 175, formant: 1.1, range: 2.4, breath: 0.2, bright: 2, lowcut: 130 },
-  { id: "ryosei", e: "🌗", name: "両声類(中性)", desc: "男女どちらにも聞こえる声", target: 160, formant: 1.07, range: 2.6, breath: 0.2, bright: 1, lowcut: 110 },
-  { id: "shota", e: "🧢", name: "ショタ", desc: "元気な小学生くらいの男の子", target: 260, formant: 1.24, range: 3.2, breath: 0.25, bright: 3, lowcut: 180 },
-  { id: "ikevo", e: "🎩", name: "低音イケボ", desc: "今より低く太い大人の男性の声", target: 0.85, formant: 0.94, range: 2.0, breath: 0.05, bright: -1, lowcut: 50, relative: true },
+  { id: "girl", e: "🎀", name: "女の子", desc: "明るくかわいい10〜20代の声", target: 250, formant: 1.2, range: 3.0, breath: 0.35, soft: 3, bright: 3, lowcut: 180 },
+  { id: "sister", e: "💄", name: "お姉さん", desc: "落ち着いた大人の女性の声", target: 205, formant: 1.14, range: 2.6, breath: 0.3, soft: 2.5, bright: 2, lowcut: 150 },
+  { id: "boy", e: "✨", name: "美少年", desc: "澄んだ中性的な少年の声", target: 175, formant: 1.1, range: 2.4, breath: 0.2, soft: 1.5, bright: 2, lowcut: 130 },
+  { id: "ryosei", e: "🌗", name: "両声類(中性)", desc: "男女どちらにも聞こえる声", target: 160, formant: 1.07, range: 2.6, breath: 0.2, soft: 1.5, bright: 1, lowcut: 110 },
+  { id: "shota", e: "🧢", name: "ショタ", desc: "元気な小学生くらいの男の子", target: 260, formant: 1.24, range: 3.2, breath: 0.25, soft: 3, bright: 3, lowcut: 180 },
+  { id: "ikevo", e: "🎩", name: "低音イケボ", desc: "今より低く太い大人の男性の声", target: 0.85, formant: 0.94, range: 2.0, breath: 0.05, soft: 0, bright: -1, lowcut: 50, relative: true },
 ];
 // 声道の長さの基準(平均的な男性を測った時の値)。この測り方での基準値
 const REF_TRACT = 16.5;
@@ -37,10 +37,11 @@ const state = {
   lowcut: 80,
   breath: 0,
   inton: 1,
+  soft: 0,
   gate: saved.gate ?? -55,
   keepConsonants: saved.keepConsonants ?? true,
 };
-const CUSTOM_KEYS = ["pitch", "formant", "bright", "lowcut", "breath", "inton"];
+const CUSTOM_KEYS = ["pitch", "formant", "bright", "lowcut", "breath", "inton", "soft"];
 const persist = () => {
   try {
     localStorage.setItem(
@@ -161,6 +162,7 @@ function applyPreset(id) {
   // あなた専用: 抑揚が小さめの人は、その声らしい幅まで広げる
   state.inton = state.range >= 0.8 ? Math.round(Math.min(1.4, Math.max(0.9, p.range / state.range)) * 20) / 20 : p.relative ? 1 : 1.15;
   state.breath = p.breath;
+  state.soft = p.soft;
   state.bright = p.bright;
   state.lowcut = p.lowcut;
   persist();
@@ -182,6 +184,7 @@ function renderControls() {
   $("#bright").value = state.bright;
   $("#lowcut").value = state.lowcut;
   $("#breath").value = state.breath;
+  $("#soft").value = state.soft;
   $("#inton").value = state.inton;
   $("#gate").value = state.gate;
   $("#keepConsonants").checked = state.keepConsonants;
@@ -191,10 +194,11 @@ function renderControls() {
   $("#brightVal").textContent = `${state.bright > 0 ? "+" : ""}${state.bright} dB`;
   $("#lowcutVal").textContent = `${state.lowcut} Hz 以下`;
   $("#breathVal").textContent = `${Math.round(state.breath * 100)}%`;
+  $("#softVal").textContent = `+${state.soft} dB`;
   $("#intonVal").textContent = `${state.inton.toFixed(2)} 倍`;
 }
 
-for (const id of ["pitch", "formant", "bright", "lowcut", "breath", "inton"]) {
+for (const id of ["pitch", "formant", "bright", "lowcut", "breath", "inton", "soft"]) {
   $(`#${id}`).addEventListener("input", (e) => {
     state[id] = Number(e.target.value);
     state.preset = "custom";
@@ -224,6 +228,7 @@ const vcParams = () => ({
   gateDb: state.gate,
   keepConsonants: state.keepConsonants,
   baseF0: state.f0 || 0,
+  soft: state.soft,
 });
 
 // ---------- 音の流れ: 入力 → 声の変換 → 低音カット → 明るさ → 出力 ----------
@@ -425,7 +430,7 @@ function runHQ(mono, sr, onProgress) {
       reject(e);
     };
     const p = vcParams();
-    w.postMessage({ data: mono, sampleRate: sr, opts: { pitch: p.pitch, formant: p.formant, inton: p.inton, breath: p.breath, baseF0: p.baseF0 } });
+    w.postMessage({ data: mono, sampleRate: sr, opts: { pitch: p.pitch, formant: p.formant, inton: p.inton, breath: p.breath, baseF0: p.baseF0, soft: p.soft } });
   });
 }
 
@@ -516,6 +521,7 @@ showF0();
 if (state.preset === "custom" && saved.custom) {
   Object.assign(state, saved.custom);
   state.breath ??= 0;
+  state.soft ??= 0;
   state.inton ??= 1;
   renderControls();
 } else {

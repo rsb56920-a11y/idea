@@ -83,6 +83,7 @@ class VoiceProcessor extends AudioWorkletProcessor {
     this.gateDb = -120; // これより小さい音は消す(ノイズゲート)
     this.baseF0 = 0; // 測定したふだんの声の高さ(抑揚の中心)
     this.keepConsonants = true; // 子音(息の音)は高さを変えない
+    this.soft = 0; // やわらかさ(dB): 声の一番低い倍音(第1倍音)を強める。女性の声の特徴
     // 変換後の音量を元の声に合わせる(倍音の数が減ると小さく聞こえるため)
     this.inPow = 1e-6;
     this.outPow = 1e-6;
@@ -316,7 +317,9 @@ class VoiceProcessor extends AudioWorkletProcessor {
       // 響きの掛け替えは山ごとに1つの倍率で(ビンごとに変えると山の形がくずれ、すその雑音が増える)
       const tp = kp + shift;
       if (tp < 1 || tp > HALF) continue;
-      const g = warped(tp) / env[kp];
+      let g = warped(tp) / env[kp];
+      // やわらかさ: 変換後の第1倍音(基本周波数)の山だけを持ち上げる
+      if (this.soft && voiced && Math.abs(fp * p - f0 * p) < f0 * p * 0.3) g *= Math.pow(10, (this.soft * this.voicing) / 20);
       const c = Math.cos(theta) * g;
       const sn = Math.sin(theta) * g;
       for (let k = lo; k <= hi; k++) {

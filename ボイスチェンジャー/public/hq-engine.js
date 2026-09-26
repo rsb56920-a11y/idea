@@ -220,6 +220,7 @@ export function convertHQ(input, sr, opts = {}) {
   const formant = opts.formant ?? 1;
   const inton = opts.inton ?? 1;
   const breath = opts.breath ?? 0;
+  const soft = opts.soft ?? 0; // やわらかさ(dB): 第1倍音を強める
   const onProgress = opts.onProgress || (() => {});
   const x = Float64Array.from(input);
   const hop = Math.round(sr * HOP_SEC);
@@ -328,6 +329,11 @@ export function convertHQ(input, sr, opts = {}) {
       a = Math.max(0.001, a);
       // 周期成分: 振幅を T/窓の和 にすると、分析時と同じ倍音の高さになる
       logP[k] = le + Math.log(Math.sqrt(1 - a * a) + 1e-6) + Math.log(T / WSUM);
+      // やわらかさ: 基本周波数のまわり(0〜1.5倍)をなだらかに持ち上げる
+      if (soft && voiced && hz < fout * 1.5) {
+        const bell = hz < fout ? 1 : 1 - (hz - fout) / (fout * 0.5);
+        logP[k] += (soft * Math.max(0, bell) * Math.LN10) / 20;
+      }
       logN[k] = le + Math.log(a) - 0.5 * Math.log(WSQ);
     }
 
