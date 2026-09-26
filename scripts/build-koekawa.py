@@ -69,3 +69,5 @@ KANATA = os.path.join(ROOT, "夜華カナタ_配信セット", "コエカワ.htm
 if os.path.isdir(os.path.dirname(KANATA)):
     with open(KANATA, "w", encoding="utf-8") as f:
         f.write(html)
+    import shutil
+    shutil.copy(os.path.join(ROOT, "ボイスチェンジャー_コエカワ", "AIボイチェン_無料で使う手順.html"), os.path.join(os.path.dirname(KANATA), "AIボイチェン_無料で使う手順.html"))

@@ -123,6 +123,7 @@ npm start   # → http://localhost:3000
 | `public/resynth-processor.js` | リアルタイム変換・作り直し方式(AudioWorklet) |
 | `public/voice-processor.js` | リアルタイム変換・軽量方式(AudioWorklet) |
 | `public/hq-engine.js` / `hq-worker.js` | 高品質エンジン(声を作り直す)と、それを裏で動かす Worker |
+| `AIボイチェン_無料で使う手順.html` | もっと本物の女声にしたいときの、無料AIボイチェン(VCClient)の使い方・4GB向け設定・声モデルの規約 |
 | `tools/check-engine.mjs` | 作り直しエンジンの自動チェック(`node ボイスチェンジャー_コエカワ/tools/check-engine.mjs`) |
 | `public/voice-analysis.js` | あなたの声の分析(高さ・抑揚の幅・声道の長さ) |
 | `public/capture-processor.js` | 測定用に、マイクの音を圧縮せずに受け取る |

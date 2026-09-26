@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>AIボイチェンを無料で使う手順</title>
+<style>
+  :root { --a: #5ee7ff; --b: #c38bff; --p: #ff7ac6; --ink: #2a2440; --bg: #f7f5ff; --card: #fff; --line: #e1dbf7; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font-family: "BIZ UDPGothic", "Yu Gothic UI", "Meiryo", sans-serif; font-size: 17px; line-height: 1.85; }
+  header { background: linear-gradient(120deg, #1d1840, #3b2a7a 60%, #6a2f6f); color: #fff; padding: 34px 18px 28px; text-align: center; }
+  header h1 { margin: 0; font-size: 28px; letter-spacing: 0.05em; }
+  header p { margin: 8px 0 0; opacity: 0.9; }
+  main { max-width: 860px; margin: 0 auto; padding: 16px 16px 80px; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 4px 22px 16px; margin-top: 18px; }
+  h2 { font-size: 21px; color: #5b3fa8; border-bottom: 3px solid #ffd6ef; padding-bottom: 4px; }
+  h3 { font-size: 18px; margin-bottom: 2px; }
+  table { border-collapse: collapse; width: 100%; font-size: 15px; }
+  th, td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: #f3efff; }
+  code { background: #2a2440; color: #ffecaa; border-radius: 6px; padding: 1px 7px; font-size: 15px; word-break: break-all; }
+  .m { background: #efe9ff; border-radius: 6px; padding: 1px 6px; font-weight: bold; }
+  .ok, .warn, .tip { border-radius: 12px; padding: 10px 14px; margin: 12px 0; }
+  .ok { background: #e9fbef; border-left: 6px solid #3bb56a; }
+  .warn { background: #fff4e5; border-left: 6px solid #f0a030; }
+  .tip { background: #f1edff; border-left: 6px solid #8b6cf0; }
+  ol li, ul li { margin: 6px 0; }
+  a { color: #5b3fa8; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🤖 AIボイチェンを無料で使う</h1>
+  <p>コエカワより、ぐっと「本物の女声」に近づける方法(RTX 3050 / VRAM 4GB 向け)</p>
+</header>
+<main>
+
+<section>
+  <h2>コエカワとAIボイチェンのちがい</h2>
+  <table>
+    <tr><th></th><th>コエカワ(いまのもの)</th><th>AIボイチェン(このページ)</th></tr>
+    <tr><td>しくみ</td><td>あなたの声の「高さ」と「響き」を計算で動かす</td><td>AIが、あなたの話した内容を<b>別の人の声色で作り直す</b></td></tr>
+    <tr><td>女声らしさ</td><td>がんばっても男性っぽさが残りやすい</td><td><b>声色はほぼ女性</b>になる(話し方のクセは残る)</td></tr>
+    <tr><td>重さ</td><td>とても軽い(ブラウザだけ)</td><td>重い(グラフィックボードを使う)</td></tr>
+    <tr><td>準備</td><td>ダブルクリックだけ</td><td>数GBのダウンロード+声モデル選び</td></tr>
+    <tr><td>お金</td><td>無料</td><td><b>無料</b>(ソフトもサンプルの声も無料)</td></tr>
+  </table>
+  <div class="tip">💡 AIは「声色」を変えますが、<b>高さの使い方(抑揚・語尾)はあなたのまま</b>です。コエカワの <span class="m">🎓 話し方レッスン</span> で練習した話し方は、AIでもそのまま効きます。両方使うのがいちばん自然です。</div>
+</section>
+
+<section>
+  <h2>使うもの(すべて無料)</h2>
+  <ul>
+    <li><b>VCClient</b>(作者: w-okada さん)… リアルタイムAIボイスチェンジャー。<b>Pythonは不要</b>で、解凍して起動するだけ。<br>公式ページ: <a href="https://github.com/w-okada/voice-changer" target="_blank">https://github.com/w-okada/voice-changer</a></li>
+    <li><b>VB-CABLE</b> … コエカワで入れたものをそのまま使います(まだなら <a href="https://vb-audio.com/Cable/" target="_blank">https://vb-audio.com/Cable/</a>)</li>
+    <li><b>声モデル</b> … 「どんな声にするか」のデータ。VCClientにサンプルが入っています(<a href="#rule">規約に注意</a>)</li>
+  </ul>
+  <div class="warn">⚠️ このページは VCClient の公式説明をもとに書いています。私のほうでは Windows 上で実際に動かして確かめられていないため、<b>ボタンの名前や画面の並びが、版によって少しちがう</b>ことがあります。わからないところがあれば、そのときの画面の様子を教えてください。</div>
+</section>
+
+<section>
+  <h2>1. ダウンロードと起動</h2>
+  <ol>
+    <li>公式ページ <a href="https://github.com/w-okada/voice-changer" target="_blank">github.com/w-okada/voice-changer</a> を開き、説明にあるダウンロード先(Hugging Face の <code>wok000/vcclient000</code>)へ進みます。</li>
+    <li>一覧から <b>Windows 用</b>で、名前に <b>cuda</b> が入った<b>いちばん新しい</b> zip を選んでダウンロード(NVIDIA のグラボ用。数GBあります)。
+      <br><small>※ グラボを LoL に使いたくて重いときは、名前に <b>std</b> が入った版(CPUで動く軽い「Beatrice v2」方式)もあります。</small></li>
+    <li>zip を右クリック → <span class="m">すべて展開</span> → 展開先を <code>F:\VCClient</code> にします(<b>前の版があっても、新しいフォルダに</b>)。</li>
+    <li>フォルダの中の <code>start_http.bat</code> をダブルクリック。黒い画面が出ますが、<b>閉じずにそのまま</b>待ちます。</li>
+    <li>初回は必要なデータを自動でダウンロードします(1〜2分)。ブラウザが開いたら <span class="m">START</span> を押します。</li>
+  </ol>
+  <div class="tip">💡 Windows の「PCが保護されました」が出たら <span class="m">詳細情報</span> → <span class="m">実行</span>。ウイルス対策ソフトに止められたら、公式からダウンロードしたものなら許可してOKです。</div>
+</section>
+
+<section>
+  <h2>2. 声を選んで、変換してみる</h2>
+  <ol>
+    <li>画面の声モデルの一覧から、サンプルの女性の声(例: <b>つくよみちゃん</b>)を選びます。</li>
+    <li><b>入力(input)</b> … あなたのマイク</li>
+    <li><b>出力(output)</b> … まずは<b>ヘッドホン</b>で確認。配信で使うときは <b>CABLE Input</b></li>
+    <li><b>TUNE(高さ)</b> … 男性→女性は <b>+10〜+12</b> くらいから(あなたの声 約145Hz なら +10 前後がおすすめ)。高すぎ・低すぎを耳で調整。</li>
+    <li>話してみて、女性の声になれば成功!</li>
+  </ol>
+  <div class="ok">✅ はじめは「クライアント(client)」の使い方がおすすめ(公式の説明より)。ブラウザのノイズ抑制も使えます。</div>
+</section>
+
+<section>
+  <h2>3. RTX 3050(VRAM 4GB)で軽く動かす設定</h2>
+  <table>
+    <tr><th>設定</th><th>おすすめ</th><th>意味</th></tr>
+    <tr><td>F0 Det(高さの検出)</td><td><b>rmvpe</b>(グラボ)/ 重いときは <b>dio</b></td><td>声の高さの読み取り方。rmvpe が正確、dio がいちばん軽い</td></tr>
+    <tr><td>CHUNK</td><td>まず <b>256</b> → 音がブツブツ切れるなら <b>512 → 1024</b></td><td>一度に変換する長さ。大きいほど安定、そのぶん遅れが増える</td></tr>
+    <tr><td>EXTRA</td><td>小さめから</td><td>前の音をどれだけ参考にするか。大きいほど品質↑・重さ↑↑</td></tr>
+    <tr><td>遅れの目安</td><td>画面の <b>buf</b> と <b>res</b></td><td>「buf が res より大きい」状態なら途切れません</td></tr>
+  </table>
+  <div class="tip">💡 LoL と同時に使うとき: LoL のフレームレート上限を 60〜120 にしておくと、グラボに余裕ができて途切れにくくなります。それでも重ければ <b>std 版(CPU で動く Beatrice v2)</b> に切り替えます。</div>
+</section>
+
+<section>
+  <h2>4. OBS・Discord・配信セットで使う</h2>
+  <ol>
+    <li>VCClient の出力を <b>CABLE Input</b> にする</li>
+    <li>OBS の「マイク」ソースのデバイスを <b>CABLE Output</b> にする(元のマイクはミュート)</li>
+    <li>Discord は 設定 → 音声 → 入力デバイスを <b>CABLE Output</b>(Discord 側のノイズ抑制はオフ推奨)</li>
+    <li>夜華カナタ配信セットの口パクは、そのまま動きます(設定.js の <code>micName</code> は「マイク」のまま)</li>
+  </ol>
+</section>
+
+<section id="rule">
+  <h2>5. ⚠️ 声モデルの規約(とても大事)</h2>
+  <p>声モデルには、その声の持ち主が決めた<b>ルール</b>があります。サンプルに入っている声の主なルールは次のとおりです(公式の説明より)。</p>
+  <table>
+    <tr><th>声</th><th>必要なこと・禁止されていること</th></tr>
+    <tr><td>つくよみちゃん</td><td><b>クレジット表記が必要</b>(配信の概要欄などに書く)。人を批判・攻撃する使い方、政治・宗教の呼びかけなどは禁止</td></tr>
+    <tr><td>あみたろ</td><td><b>ボイスチェンジャーを使っていることを明記</b>し、あみたろ本人が話しているのではないと誰でもわかるようにする必要あり</td></tr>
+  </table>
+  <div class="warn">
+    ⚠️ つまり、サンプルの声では「ボイチェンだと絶対わからないようにする」使い方は、<b>規約で認められていない場合があります</b>。使う前に、必ずその声の最新の規約を読んでください。<br><br>
+    ⚠️ ネットには、<b>有名人・歌い手・アニメキャラの声を勝手に学習した声モデル</b>が出回っていますが、本人の許可のない声は使わないでください(トラブルや権利侵害になります)。
+  </div>
+  <div class="tip">
+    💡 「気づかれない自然な女声」を本気で目指すなら、いちばん確実なのは<br>
+    ① 規約で<b>表記なしの使用も認められている</b>声モデルを探す、または<br>
+    ② 知り合いの女性や声優さんに<b>許可をもらって</b>、その人の声で自分専用の声モデルを作る(学習にはPythonと時間が必要。やりたくなったら手順を作ります)<br>
+    のどちらかです。
+  </div>
+</section>
+
+<section>
+  <h2>こまったとき</h2>
+  <table>
+    <tr><th>こまりごと</th><th>やること</th></tr>
+    <tr><td>音がブツブツ切れる</td><td>CHUNK を大きく(512 → 1024)、F0 Det を dio に</td></tr>
+    <tr><td>遅れが大きい</td><td>CHUNK を小さく。EXTRA を小さく</td></tr>
+    <tr><td>声が高すぎ・低すぎ・裏返る</td><td>TUNE を ±1〜2 ずつ調整</td></tr>
+    <tr><td>ゲームがカクつく</td><td>LoL のフレームレート上限を下げる。std 版(CPU)に切り替える</td></tr>
+    <tr><td>起動しない</td><td>フォルダを F:\VCClient のような<b>短い英数字の場所</b>に置き直す。黒い画面のエラーを教えてください</td></tr>
+  </table>
+</section>
+
+</main>
+</body>
+</html>
