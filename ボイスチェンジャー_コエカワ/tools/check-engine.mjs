@@ -35,5 +35,18 @@ for (const [f0, nz, minOk] of [[80, null, 0.95], [100, null, 0.95], [115, null, 
   if (!good) fail++;
   console.log(`${good ? "OK " : "NG "} ${f0}Hz${nz != null ? ` 雑音SN比${nz}dB` : ""}: 正しい ${(r.ok * 100).toFixed(0)}% / 1オクターブ違い ${(r.oct * 100).toFixed(1)}% / 無声 ${(r.unv * 100).toFixed(0)}%`);
 }
+// 拍手: 無音の中の拍手が、変換されずにそのままの鋭さで通るか・音割れしないか
+{
+  const clap = (amp) => { const n = Math.floor(SR * 0.06), o = new Float64Array(n); let lp = 0; for (let i = 0; i < n; i++) { const t = i / SR; const w = rnd(); lp += 0.35 * (w - lp); o[i] = amp * Math.min(1, t / 0.0015) * Math.exp(-t / 0.008) * (w - lp * 0.5) * 2; } return o; };
+  const x = new Float64Array(SR * 2); const at = [Math.floor(SR * 0.5), Math.floor(SR * 1.2)]; for (const s of at) x.set(clap(0.95), s);
+  let Proc; globalThis.sampleRate = SR; globalThis.AudioWorkletProcessor = class { constructor() { this.port = {}; } }; globalThis.registerProcessor = (n, c) => (Proc = c);
+  eval(readFileSync(file, "utf8")); const p = new Proc({ processorOptions: { pitch: 2, formant: 1.2 } });
+  const y = new Float64Array(x.length); for (let i = 0; i < x.length; i += 128) { const inp = Float32Array.from(x.subarray(i, i + 128)); const o = new Float32Array(inp.length); p.process([[inp]], [[o]]); y.set(o, i); }
+  const L = p.latency; let peak = 0, ok = true;
+  for (const s of at) { let ei = 0, eo = 0; for (let i = 0; i < 480; i++) { ei += x[s + i] ** 2; eo += y[s + L + i] ** 2; } const d = Math.abs(10 * Math.log10(eo / ei)); if (d > 3) ok = false; }
+  for (const v of y) peak = Math.max(peak, Math.abs(v)); if (peak > 1) ok = false;
+  if (!ok) fail++;
+  console.log(`${ok ? "OK " : "NG "} 拍手: そのまま通る・音割れなし(出力の最大 ${peak.toFixed(2)})`);
+}
 console.log(fail ? `❌ ${fail}件の失敗` : "✅ すべて合格");
 process.exit(fail ? 1 : 0);

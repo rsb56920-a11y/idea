@@ -171,6 +171,17 @@ class ResynthProcessor extends AudioWorkletProcessor {
     this.hIn = new Float64Array(3);
     this.hOut = new Float64Array(3);
     this.hIdx = 0;
+    // 拍手・机を叩く音など「声ではない鋭い音」は、変換せずに元の音をそのまま通す(dryK = 元の音の割合)
+    this.dryK = new Float32Array(RING);
+    // しゃべりながらの拍手用(ごく短いので、声がもれても拍手の音にかくれる)。声の保護では消さない
+    this.dryT = new Float32Array(RING);
+    this.bgPow = 1e-6; // 直前の背景の音量
+    this.lastTransient = -1e9;
+    this.cands = [];
+    this.tThresh = this.tThresh ?? 10; // 背景より何倍(パワー)大きければ鋭い音とみなすか(10 = 10dB)
+    this.tHf = this.tHf ?? 0.5; // 高い音の多さの条件
+    // 音割れ防止(リミッター)
+    this.limGain = 1;
   }
 
   rand() {
@@ -198,7 +209,11 @@ class ResynthProcessor extends AudioWorkletProcessor {
       const wet = this.outRing[oi];
       this.outRing[oi] = 0;
       const dry = this.now >= L ? this.inRing[oi] : 0;
-      out[i] = this.bypass ? dry : wet * this.mix + dry * (1 - this.mix);
+      const k = Math.max(this.dryK[oi], this.dryT[oi]);
+      this.dryK[oi] = 0;
+      this.dryT[oi] = 0;
+      const conv = wet * (1 - k) + dry * k;
+      out[i] = this.bypass ? dry : conv * this.mix + dry * (1 - this.mix);
       this.now++;
       if (this.now % this.hop === 0 && this.now > this.D + this.hop) this.step(this.now - this.D);
     }
@@ -209,10 +224,21 @@ class ResynthProcessor extends AudioWorkletProcessor {
   // 時刻 c を中心に分析し、c までのパルスを並べる
   step(c) {
     const sr = sampleRate;
+    this.detectTransient(c + this.D - this.hop, c);
     const { f0, ap, power } = this.yin(c);
     this.envelope(c, f0);
     this.f0Prev = this.f0Cur;
     this.f0Cur = f0;
+    // 声(高さのある音)が出ている所では元の音を通さない(元の声がもれないように)。2msでなめらかに戻す
+    if (f0) {
+      const ramp = Math.round(sr * 0.002);
+      for (let n = c - this.hop; n < c + this.hop; n++) {
+        const i = n - (c - this.hop);
+        const lim = i < ramp ? 1 - i / ramp : 0;
+        const idx = n & MASK;
+        if (this.dryK[idx] > lim) this.dryK[idx] = lim;
+      }
+    }
     this.apPrev = this.apCur;
     this.apCur = f0 ? ap : 1;
     if (f0) {
@@ -266,11 +292,77 @@ class ResynthProcessor extends AudioWorkletProcessor {
     this.fast += (tgt - this.fast) * (tgt < this.fast ? 0.6 : 0.35);
     const g1 = st.gain * this.gateGain * this.fast;
     const g0 = this.gain;
+    let peak = 0;
     for (let n = t0; n < c; n++) {
       const g = g0 + ((g1 - g0) * (n - t0)) / this.hop;
-      this.outRing[n & MASK] *= g;
+      const v = (this.outRing[n & MASK] *= g);
+      if (Math.abs(v) > peak) peak = Math.abs(v);
     }
     this.gain = g1;
+    // 音割れ防止: この5msの一番大きい所が 0.9 を超えそうなら、すぐに下げて、ゆっくり(約80ms)戻す
+    const l0 = this.limGain;
+    const lt = peak * l0 > 0.9 ? 0.9 / peak : Math.min(1, l0 + (1 - l0) * (this.hop / (0.08 * sr)));
+    const l1 = Math.min(lt, peak > 0.9 ? 0.9 / peak : 1);
+    for (let n = t0; n < c; n++) this.outRing[n & MASK] *= Math.min(l0, l1) + ((l1 - Math.min(l0, l1)) * (n - t0)) / this.hop;
+    this.limGain = l1;
+  }
+
+  // 先読みした一番新しい5ms [a, a+hop) に「拍手のような鋭い音」の始まりがないか調べる。
+  // 条件: 1ms の間に、直前20msの背景より 15dB 以上大きくなる + 高い音を多く含む(声の出だしは高い音が少なく、ゆっくり立ち上がる)
+  detectTransient(a, c) {
+    const sr = sampleRate;
+    const sub = Math.round(sr * 0.001);
+    let pw = 0;
+    for (let s0 = a; s0 < a + this.hop; s0 += sub) {
+      let e = 0, d = 0;
+      for (let n = s0; n < s0 + sub; n++) {
+        const v = this.inRing[n & MASK];
+        const dv = v - this.inRing[(n - 1) & MASK];
+        e += v * v;
+        d += dv * dv;
+      }
+      e /= sub;
+      d /= sub;
+      if (e > this.bgPow * this.tThresh && e > 1e-4 && d > e * this.tHf && s0 - this.lastTransient > sr * 0.06) {
+        // 候補として覚えておき、12ms先まで届いたら「すぐ小さくなったか」で拍手かどうか決める
+        this.lastTransient = s0;
+        this.cands.push({ s0, e, bg: this.bgPow, talking: c - this.lastVoicedAt < sr * 0.1 });
+      }
+      pw += e;
+    }
+    pw /= this.hop / sub;
+    // 候補の確認: 6〜12ms後の音量が、始まりの1msの 1/4(-6dB)より小さければ拍手・物音(声の出だしはむしろ大きくなる)
+    const newest = a + this.hop;
+    while (this.cands.length && this.cands[0].s0 + Math.round(sr * 0.012) <= newest) {
+      const cd = this.cands.shift();
+      const from = cd.s0 + Math.round(sr * 0.006), to = cd.s0 + Math.round(sr * 0.012);
+      let e2 = 0;
+      for (let n = from; n < to; n++) e2 += this.inRing[n & MASK] ** 2;
+      e2 /= to - from;
+      // 始まりの基準: 最初の3msの中で一番大きい1ms
+      let e1 = 0;
+      for (let s1 = cd.s0; s1 < cd.s0 + 3 * sub; s1 += sub) {
+        let q = 0;
+        for (let n = s1; n < s1 + sub; n++) q += this.inRing[n & MASK] ** 2;
+        if (q / sub > e1) e1 = q / sub;
+      }
+      // (声などの背景の分は差し引いて比べる)
+      if (e2 - cd.bg > (e1 - cd.bg) * 0.25) continue;
+      this.nTransient = (this.nTransient || 0) + 1;
+      // 声が出ている途中なら短く(元の声がもれないように)、無音なら拍手の余韻まで長く
+      const hold = Math.round(sr * (cd.talking ? 0.008 : 0.03));
+      const fin = Math.round(sr * 0.002);
+      const fout = Math.round(sr * (cd.talking ? 0.006 : 0.015));
+      const arr = cd.talking ? this.dryT : this.dryK;
+      for (let i = -fin; i < hold + fout; i++) {
+        const w = i < 0 ? (i + fin) / fin : i < hold ? 1 : 1 - (i - hold) / fout;
+        const idx = (cd.s0 + i) & MASK;
+        if (w > arr[idx]) arr[idx] = w;
+      }
+    }
+    // 背景の音量: 下がるときはすぐ、上がるときはゆっくり追う(拍手そのものを背景に入れない)
+    this.bgPow += (pw - this.bgPow) * (pw < this.bgPow ? 0.3 : 0.05);
+    if (this.bgPow < 1e-8) this.bgPow = 1e-8;
   }
 
   // YIN 法で声の高さを出す(c を中心に)
