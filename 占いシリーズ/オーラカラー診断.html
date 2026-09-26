@@ -1,0 +1,571 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>オーラカラー診断</title>
+<meta name="description" content="あなたのまわりにただようオーラの色を、生年月日から診断。プロフィール画像にもぴったりな、あなただけのカラーカードつき。" />
+<meta property="og:title" content="オーラカラー診断" />
+<meta property="og:description" content="あなたのまわりにただようオーラの色を、生年月日から診断。プロフィール画像にもぴったりな、あなただけのカラーカードつき。" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="theme-color" content="#1f1a3a" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" />
+<style>
+:root { --a: #5b3fa8; --b: #1f1a3a; --gold: #ffecaa; --ink: #f6f2ff; --card: rgba(255, 255, 255, 0.08); --line: rgba(255, 236, 170, 0.35); }
+* { box-sizing: border-box; }
+html { background: #120e28; }
+body {
+  margin: 0; min-height: 100vh; color: var(--ink);
+  font-family: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+  background: radial-gradient(ellipse at 50% -10%, var(--a) 0%, transparent 60%), linear-gradient(180deg, var(--b) 0%, #120e28 100%);
+  background-attachment: fixed; line-height: 1.8;
+}
+#sky { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+main { position: relative; max-width: 640px; margin: 0 auto; padding: 24px 16px 60px; }
+.hero { text-align: center; padding: 28px 0 10px; }
+.hero .emoji { font-size: 64px; animation: float 4s ease-in-out infinite; }
+@keyframes float { 50% { transform: translateY(-8px) rotate(4deg); } }
+h1 {
+  margin: 4px 0; font-size: clamp(28px, 7vw, 40px); font-weight: 900; letter-spacing: 0.04em;
+  background: linear-gradient(100deg, #fff 30%, var(--gold) 50%, #fff 70%); background-size: 250% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent; animation: shine 5s ease-in-out infinite;
+}
+@keyframes shine { 0%, 100% { background-position: 100% 0; } 50% { background-position: 0 0; } }
+.catch { margin: 8px 0; opacity: 0.92; }
+.badges span { display: inline-block; margin: 3px; padding: 2px 12px; border: 1px solid var(--line); border-radius: 99px; font-size: 13px; color: var(--gold); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 20px; margin: 18px 0; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.form label { display: block; margin-bottom: 14px; font-weight: 700; }
+.form small { font-weight: 500; opacity: 0.7; margin-left: 6px; }
+input { display: block; width: 100%; margin-top: 6px; padding: 12px 14px; font: inherit; font-size: 17px; color: #221b44; background: #fff; border: 0; border-radius: 12px; }
+button, .buy { font: inherit; cursor: pointer; }
+.go, .buy {
+  display: block; width: 100%; padding: 14px; border: 0; border-radius: 99px; text-align: center; text-decoration: none;
+  font-size: 18px; font-weight: 900; color: #2a1d57; background: linear-gradient(90deg, var(--gold), #ffd36e); box-shadow: 0 6px 24px rgba(255, 211, 110, 0.35);
+}
+.go:active, .buy:active { transform: scale(0.98); }
+.note { font-size: 12.5px; opacity: 0.7; margin: 10px 0 0; }
+.reveal .card, .reveal .actions { animation: rise 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.reveal .paid { animation-delay: 0.25s; }
+@keyframes rise { from { opacity: 0; transform: translateY(24px) scale(0.98); } }
+.big { text-align: center; margin: 4px 0 12px; }
+.big .k { font-size: 14px; letter-spacing: 0.2em; color: var(--gold); }
+.big .v { font-size: clamp(30px, 8vw, 44px); font-weight: 900; line-height: 1.3; text-shadow: 0 0 22px rgba(255, 236, 170, 0.45); }
+.big .s { opacity: 0.85; }
+.card h3 { margin: 18px 0 6px; color: var(--gold); font-size: 18px; }
+.card h3:first-child { margin-top: 0; }
+.card p { margin: 6px 0; }
+.meter { height: 12px; background: rgba(255, 255, 255, 0.15); border-radius: 99px; overflow: hidden; margin: 6px 0 12px; }
+.meter i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), #ff9ecb); border-radius: 99px; animation: grow 1.4s ease both; }
+@keyframes grow { from { width: 0 !important; } }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { padding: 4px 12px; border-radius: 99px; background: rgba(255, 255, 255, 0.12); font-size: 14px; }
+table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+td, th { padding: 6px 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); text-align: left; vertical-align: top; }
+th { color: var(--gold); white-space: nowrap; }
+.actions { display: flex; gap: 10px; }
+.actions button, .ghost { flex: 1; padding: 12px; border-radius: 99px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.08); color: var(--ink); font-weight: 700; }
+.ghost { display: block; width: 100%; margin-top: 12px; }
+.paid .menu { margin: 6px 0 12px; padding-left: 1.2em; }
+.paid .blur { max-height: 180px; overflow: hidden; filter: blur(6px); opacity: 0.6; user-select: none; pointer-events: none; -webkit-mask-image: linear-gradient(#000 40%, transparent); mask-image: linear-gradient(#000 40%, transparent); margin-bottom: 14px; }
+.code { display: flex; gap: 8px; margin-top: 12px; }
+.code input { margin: 0; }
+.code button { flex: none; padding: 0 18px; border-radius: 12px; border: 0; background: var(--a); color: #fff; font-weight: 700; }
+.more h2 { font-size: 18px; text-align: center; color: var(--gold); margin-top: 40px; }
+.others { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.others a { display: flex; align-items: center; gap: 8px; padding: 12px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); color: var(--ink); text-decoration: none; font-size: 14px; }
+.others b { font-size: 26px; }
+footer { text-align: center; margin-top: 40px; opacity: 0.7; font-size: 13px; }
+.modal { position: fixed; inset: 0; background: rgba(8, 5, 20, 0.85); display: grid; place-items: center; padding: 16px; z-index: 10; }
+.modal[hidden] { display: none; }
+.sheet { max-width: 420px; width: 100%; text-align: center; }
+.sheet img { width: 100%; border-radius: 14px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; } }
+
+</style>
+<!-- 販売URL・合言葉などの設定(同じフォルダの 設定.js。なくても動きます) -->
+<script src="設定.js"></script>
+</head>
+<body>
+<canvas id="sky"></canvas>
+<main>
+  <header class="hero">
+    <div class="emoji" id="emoji"></div>
+    <h1 id="title"></h1>
+    <p class="catch" id="catch"></p>
+    <div class="badges" id="badges"></div>
+  </header>
+  <form class="card form" id="form"></form>
+  <section id="result" hidden>
+    <div class="card" id="free"></div>
+    <div class="actions">
+      <button type="button" id="saveImg">📸 結果を画像で保存</button>
+      <button type="button" id="shareX">𝕏 でシェア</button>
+    </div>
+    <div class="card paid" id="paid" hidden></div>
+    <button type="button" class="ghost" id="again">もう一度占う</button>
+  </section>
+  <section class="more">
+    <h2>ほかの占いも</h2>
+    <div class="others" id="others"></div>
+  </section>
+  <footer><span id="site"></span><br /><small>占いは楽しむためのものです。大切な判断はご自身で。</small></footer>
+</main>
+<div class="modal" id="modal" hidden>
+  <div class="sheet">
+    <img id="cardImg" alt="占い結果の画像" />
+    <p>スマホは画像を長押しで保存できます</p>
+    <a class="buy" id="dl">画像をダウンロード</a>
+    <button type="button" class="ghost" id="close">とじる</button>
+  </div>
+</div>
+<script>
+// ==== 共通: SHA-256(合言葉チェック用。file:// でも動くよう自前実装) ====
+const U = {};
+U.sha256 = function(bytes) {
+  const K = new Uint32Array([
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
+    0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
+    0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
+    0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+  ]);
+  const H = new Uint32Array([0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19]);
+  const len = bytes.length;
+  const total = ((len + 9 + 63) >> 6) << 6;
+  const m = new Uint8Array(total);
+  m.set(bytes);
+  m[len] = 0x80;
+  const bits = len * 8;
+  const dv = new DataView(m.buffer);
+  dv.setUint32(total - 4, bits >>> 0);
+  dv.setUint32(total - 8, Math.floor(bits / 2 ** 32));
+  const w = new Uint32Array(64);
+  const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+  for (let off = 0; off < total; off += 64) {
+    for (let i = 0; i < 16; i++) w[i] = dv.getUint32(off + i * 4);
+    for (let i = 16; i < 64; i++) {
+      const s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+      const s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
+    }
+    let [a, b, c, d, e, f, g, h] = H;
+    for (let i = 0; i < 64; i++) {
+      const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+      const ch = (e & f) ^ (~e & g);
+      const t1 = (h + S1 + ch + K[i] + w[i]) >>> 0;
+      const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+      const maj = (a & b) ^ (a & c) ^ (b & c);
+      const t2 = (S0 + maj) >>> 0;
+      h = g;
+      g = f;
+      f = e;
+      e = (d + t1) >>> 0;
+      d = c;
+      c = b;
+      b = a;
+      a = (t1 + t2) >>> 0;
+    }
+    H[0] += a;
+    H[1] += b;
+    H[2] += c;
+    H[3] += d;
+    H[4] += e;
+    H[5] += f;
+    H[6] += g;
+    H[7] += h;
+  }
+  const out = new Uint8Array(32);
+  const odv = new DataView(out.buffer);
+  for (let i = 0; i < 8; i++) odv.setUint32(i * 4, H[i]);
+  return out;
+};
+
+// ==== 共通: 計算・画面・シェア・合言葉 ====
+// 各占いは window.PRODUCT = { id, title, ... compute(v) } を用意して U.start() を呼ぶだけ。
+const CFG = Object.assign(
+  { siteName: "星詠みルナの占い館", siteUrl: "", xHandle: "", payUrl: {}, price: {}, unlock: {}, allPassHash: "" },
+  window.URANAI || {},
+);
+
+U.hex = (bytes) => Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+U.hash = (s) => U.hex(U.sha256(new TextEncoder().encode(s)));
+U.esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+// ---- 数・暦の計算 ----
+// 数秘術: 数字を1桁に(11/22/33 はマスターナンバーとして残す)
+U.reduce = (n, keepMaster = true) => {
+  while (n > 9 && !(keepMaster && (n === 11 || n === 22 || n === 33))) n = String(n).split("").reduce((a, c) => a + +c, 0);
+  return n;
+};
+U.digitSum = (s) => String(s).replace(/\D/g, "").split("").reduce((a, c) => a + +c, 0);
+U.lifePath = (y, m, d) => U.reduce(U.digitSum(`${y}${m}${d}`));
+U.personalYear = (m, d, year) => U.reduce(U.digitSum(`${m}${d}${year}`), false);
+U.personalMonth = (py, month) => U.reduce(py + month, false);
+// ユリウス通日(グレゴリオ暦)
+U.jdn = (y, m, d) => {
+  const a = Math.floor((14 - m) / 12), yy = y + 4800 - a, mm = m + 12 * a - 3;
+  return d + Math.floor((153 * mm + 2) / 5) + 365 * yy + Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
+};
+// 日柱(0=甲子 … 59=癸亥)。2000/1/1 = 戊午(54)
+U.dayPillar = (y, m, d) => (U.jdn(y, m, d) + 49) % 60;
+U.STEMS = "甲乙丙丁戊己庚辛壬癸";
+U.BRANCHES = "子丑寅卯辰巳午未申酉戌亥";
+U.ELEM = ["木", "火", "土", "金", "水"];
+U.pillarName = (i) => U.STEMS[i % 10] + U.BRANCHES[i % 12];
+U.yearBranch = (y) => (((y - 4) % 12) + 12) % 12;
+U.yearStem = (y) => (((y - 4) % 10) + 10) % 10;
+// 12星座
+U.ZODIAC = [
+  ["やぎ座", 1, 19, "土"], ["みずがめ座", 2, 18, "風"], ["うお座", 3, 20, "水"], ["おひつじ座", 4, 19, "火"],
+  ["おうし座", 5, 20, "土"], ["ふたご座", 6, 21, "風"], ["かに座", 7, 22, "水"], ["しし座", 8, 22, "火"],
+  ["おとめ座", 9, 22, "土"], ["てんびん座", 10, 23, "風"], ["さそり座", 11, 22, "水"], ["いて座", 12, 21, "火"],
+];
+U.zodiac = (m, d) => {
+  const z = U.ZODIAC[m - 1];
+  const hit = d <= z[2] ? z : U.ZODIAC[m % 12];
+  return { name: hit[0], elem: hit[3] };
+};
+// 文字列から決まった乱数(同じ入力なら同じ結果)
+U.rng = (seed) => {
+  let h = parseInt(U.hash(seed).slice(0, 8), 16) || 1;
+  return () => {
+    h ^= h << 13; h >>>= 0; h ^= h >>> 17; h ^= h << 5; h >>>= 0;
+    return h / 4294967296;
+  };
+};
+U.today = () => {
+  const t = new Date();
+  return { y: t.getFullYear(), m: t.getMonth() + 1, d: t.getDate(), key: `${t.getFullYear()}-${t.getMonth() + 1}-${t.getDate()}` };
+};
+U.parseDate = (s) => {
+  const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s || "");
+  if (!m) return null;
+  const y = +m[1], mo = +m[2], d = +m[3];
+  const t = new Date(y, mo - 1, d);
+  if (t.getMonth() !== mo - 1 || y < 1900 || y > 2030) return null;
+  return { y, m: mo, d };
+};
+
+// ---- 画面 ----
+const $ = (s) => document.querySelector(s);
+
+function drawSky() {
+  const cv = $("#sky");
+  const ctx = cv.getContext("2d");
+  let W, H, stars;
+  const resize = () => {
+    W = cv.width = innerWidth;
+    H = cv.height = innerHeight;
+    stars = Array.from({ length: Math.round((W * H) / 9000) }, () => ({ x: Math.random() * W, y: Math.random() * H, r: Math.random() * 1.3 + 0.3, p: Math.random() * 6 }));
+  };
+  resize();
+  addEventListener("resize", resize);
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let last = 0;
+  const tick = (t) => {
+    requestAnimationFrame(tick);
+    if (t - last < 50) return; // 20fps でかるく
+    last = t;
+    ctx.clearRect(0, 0, W, H);
+    for (const s of stars) {
+      const a = reduce ? 0.7 : 0.35 + 0.65 * Math.abs(Math.sin(t / 1400 + s.p));
+      ctx.globalAlpha = a;
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, 7);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  };
+  requestAnimationFrame(tick);
+}
+
+function unlocked(id) {
+  try {
+    return localStorage.getItem("uranai_unlock_" + id) === "1" || localStorage.getItem("uranai_unlock_all") === "1";
+  } catch {
+    return false;
+  }
+}
+function setUnlocked(key) {
+  try {
+    localStorage.setItem("uranai_unlock_" + key, "1");
+  } catch {}
+}
+
+// 結果を画像に(インスタ・Xにそのまま貼れる 1080x1350)
+function makeCard(card, P) {
+  const W = 1080, H = 1350;
+  const cv = document.createElement("canvas");
+  cv.width = W;
+  cv.height = H;
+  const c = cv.getContext("2d");
+  const g = c.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, P.colors[0]);
+  g.addColorStop(1, P.colors[1]);
+  c.fillStyle = g;
+  c.fillRect(0, 0, W, H);
+  const r = U.rng(card.big + card.kicker);
+  for (let i = 0; i < 160; i++) {
+    c.globalAlpha = 0.25 + r() * 0.75;
+    c.fillStyle = "#fff";
+    c.beginPath();
+    c.arc(r() * W, r() * H, r() * 2.2 + 0.4, 0, 7);
+    c.fill();
+  }
+  c.globalAlpha = 1;
+  c.strokeStyle = "rgba(255,236,170,0.7)";
+  c.lineWidth = 3;
+  c.strokeRect(46, 46, W - 92, H - 92);
+  const font = '"Zen Maru Gothic","Hiragino Maru Gothic ProN","Yu Gothic","Meiryo",sans-serif';
+  c.textAlign = "center";
+  c.fillStyle = "#ffecaa";
+  c.font = `700 44px ${font}`;
+  c.fillText(P.title, W / 2, 150);
+  c.font = `140px ${font}`;
+  c.fillText(card.emoji || P.emoji, W / 2, 360);
+  c.fillStyle = "#fff";
+  c.font = `500 40px ${font}`;
+  c.fillText(card.kicker, W / 2, 470);
+  let fs = 110;
+  c.font = `900 ${fs}px ${font}`;
+  while (c.measureText(card.big).width > W - 160 && fs > 50) c.font = `900 ${(fs -= 6)}px ${font}`;
+  c.shadowColor = "rgba(0,0,0,0.35)";
+  c.shadowBlur = 20;
+  c.fillText(card.big, W / 2, 610);
+  c.shadowBlur = 0;
+  c.font = `500 42px ${font}`;
+  let y = 740;
+  for (const line of card.lines || []) {
+    // 長い行は折り返す
+    let buf = "";
+    for (const ch of line) {
+      if (c.measureText(buf + ch).width > W - 200) {
+        c.fillText(buf, W / 2, y);
+        y += 62;
+        buf = "";
+      }
+      buf += ch;
+    }
+    c.fillText(buf, W / 2, y);
+    y += 78;
+  }
+  c.fillStyle = "#ffecaa";
+  c.font = `700 36px ${font}`;
+  c.fillText(`#${P.hashtag}`, W / 2, H - 150);
+  c.fillStyle = "rgba(255,255,255,0.85)";
+  c.font = `500 32px ${font}`;
+  c.fillText(CFG.siteName + (CFG.xHandle ? `  ${CFG.xHandle}` : ""), W / 2, H - 95);
+  return cv.toDataURL("image/png");
+}
+
+U.start = () => {
+  const P = window.PRODUCT;
+  document.title = `${P.title}|${CFG.siteName}`;
+  document.documentElement.style.setProperty("--a", P.colors[0]);
+  document.documentElement.style.setProperty("--b", P.colors[1]);
+  drawSky();
+  $("#emoji").textContent = P.emoji;
+  $("#title").textContent = P.title;
+  $("#catch").innerHTML = P.catch;
+  $("#badges").innerHTML = (P.badges || []).map((b) => `<span>${U.esc(b)}</span>`).join("");
+  $("#site").textContent = CFG.siteName;
+
+  // 入力欄
+  const form = $("#form");
+  form.innerHTML =
+    P.inputs
+      .map((f) => {
+        const req = f.optional ? "" : "required";
+        const hint = f.optional ? '<small>(なくてもOK)</small>' : "";
+        if (f.type === "date") return `<label>${U.esc(f.label)}${hint}<input type="date" id="in_${f.id}" min="1900-01-01" max="2030-12-31" value="${f.value || ""}" ${req}></label>`;
+        return `<label>${U.esc(f.label)}${hint}<input type="text" id="in_${f.id}" maxlength="20" placeholder="${U.esc(f.placeholder || "")}" ${req}></label>`;
+      })
+      .join("") + `<button class="go" type="submit">${U.esc(P.button || "占う")}</button><p class="note">入力した内容はこの端末の中だけで計算され、どこにも送信されません。</p>`;
+
+  // 前回の入力を復元
+  try {
+    const saved = JSON.parse(localStorage.getItem("uranai_input_" + P.id) || "{}");
+    for (const f of P.inputs) if (saved[f.id]) $("#in_" + f.id).value = saved[f.id];
+  } catch {}
+
+  let last = null;
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const v = {};
+    const raw = {};
+    for (const f of P.inputs) {
+      const s = $("#in_" + f.id).value.trim();
+      raw[f.id] = s;
+      if (f.type === "date") {
+        if (!s && f.optional) continue;
+        const dt = U.parseDate(s);
+        if (!dt) return alert(`${f.label}を正しく入れてください`);
+        v[f.id] = dt;
+      } else v[f.id] = s;
+    }
+    try {
+      localStorage.setItem("uranai_input_" + P.id, JSON.stringify(raw));
+    } catch {}
+    last = P.compute(v);
+    show(last);
+  });
+
+  function show(res) {
+    const out = $("#result");
+    out.hidden = false;
+    out.classList.remove("reveal");
+    void out.offsetWidth;
+    out.classList.add("reveal");
+    $("#free").innerHTML = res.free;
+    renderPaid(res);
+    setTimeout(() => out.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+  }
+
+  function renderPaid(res) {
+    const box = $("#paid");
+    if (!res.paid) return (box.hidden = true);
+    box.hidden = false;
+    if (unlocked(P.id)) {
+      box.innerHTML = `<h3>🔓 ${U.esc(P.paidTitle)}</h3>${res.paid}`;
+      return;
+    }
+    const pay = CFG.payUrl[P.id] || CFG.payUrl.all || "";
+    const price = CFG.price[P.id] || CFG.price.all || "";
+    box.innerHTML = `
+      <h3>🔒 ${U.esc(P.paidTitle)}</h3>
+      <ul class="menu">${(P.paidMenu || []).map((m) => `<li>${U.esc(m)}</li>`).join("")}</ul>
+      <div class="blur" aria-hidden="true">${res.paidTeaser || res.paid}</div>
+      ${pay ? `<a class="buy" href="${U.esc(pay)}" target="_blank" rel="noopener">完全版を見る${price ? `(${U.esc(price)})` : ""}</a>` : `<p class="note">(販売ページのURLは 設定.js の payUrl に書くとここにボタンが出ます)</p>`}
+      <form class="code" id="codeForm"><input id="code" placeholder="購入後に届く合言葉" autocomplete="off"><button>ひらく</button></form>
+      <p class="note" id="codeMsg">購入後の画面・メールに書いてある「合言葉」を入れると、この端末でずっと見られます。</p>`;
+    $("#codeForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const h = U.hash($("#code").value.trim());
+      if (h === CFG.unlock[P.id]) setUnlocked(P.id);
+      else if (CFG.allPassHash && h === CFG.allPassHash) setUnlocked("all");
+      else return ($("#codeMsg").textContent = "合言葉がちがうようです。全角/半角や空白を確かめてね。");
+      renderPaid(res);
+    });
+  }
+
+  $("#saveImg").addEventListener("click", () => {
+    if (!last) return;
+    const url = makeCard(last.card, P);
+    const m = $("#modal");
+    m.hidden = false;
+    $("#cardImg").src = url;
+    $("#dl").href = url;
+    $("#dl").download = `${P.title}.png`;
+  });
+  $("#modal").addEventListener("click", (e) => {
+    if (e.target.id === "modal" || e.target.id === "close") $("#modal").hidden = true;
+  });
+  $("#shareX").addEventListener("click", () => {
+    if (!last) return;
+    const url = CFG.siteUrl ? CFG.siteUrl.replace(/\/?$/, "/") + encodeURIComponent(P.file || "") : "";
+    const text = `${last.share}\n#${P.hashtag} #占い`;
+    open(`https://x.com/intent/post?text=${encodeURIComponent(text)}${url ? `&url=${encodeURIComponent(url)}` : ""}`, "_blank", "noopener");
+  });
+  $("#again").addEventListener("click", () => scrollTo({ top: 0, behavior: "smooth" }));
+
+  // ほかの占い(回遊用)
+  const others = (window.CATALOG || []).filter((c) => c.id !== P.id);
+  $("#others").innerHTML = others.map((c) => `<a href="${encodeURI(c.file)}"><b>${c.emoji}</b><span>${U.esc(c.title)}</span></a>`).join("");
+};
+
+// ---- 結果HTMLの部品 ----
+U.big = (k, v, s) => `<div class="big"><div class="k">${U.esc(k)}</div><div class="v">${U.esc(v)}</div>${s ? `<div class="s">${U.esc(s)}</div>` : ""}</div>`;
+U.meter = (pct) => `<div class="meter"><i style="width:${Math.max(0, Math.min(100, pct))}%"></i></div>`;
+U.chips = (list) => `<div class="row">${list.map((c) => `<span class="chip">${U.esc(c)}</span>`).join("")}</div>`;
+U.p = (s) => `<p>${U.esc(s)}</p>`;
+U.h = (s) => `<h3>${U.esc(s)}</h3>`;
+
+window.CATALOG = [{"id": "tenchusatsu", "file": "天中殺チェッカー.html", "title": "天中殺チェッカー", "emoji": "🌑", "desc": "あなたの「天中殺」はいつ?2026-2027年は 午未天中殺 の人が要注意。生年月日だけで、30秒でわかります。"}, {"id": "numerology2027", "file": "数秘術2027年の運勢.html", "title": "数秘術 2027年の運勢", "emoji": "🔢", "desc": "生年月日の数字が教える、あなたの2027年のテーマ。いまの流れと、来年いちばん動くべき月がわかります。"}, {"id": "oshi", "file": "推し相性占い.html", "title": "推しとの運命度占い", "emoji": "💘", "desc": "あなたと推しの誕生日から、ふたりの運命度を占います。推しの誕生日は公式プロフィールでチェック!"}, {"id": "saju", "file": "韓国式サジュ診断.html", "title": "韓国式サジュ診断", "emoji": "🌸", "desc": "韓国で大人気の「サジュ(四柱推命)」。生まれた日の干支から、あなたの本当の性質を10タイプで診断します。"}, {"id": "tarot", "file": "今日のタロット.html", "title": "今日のタロット", "emoji": "🃏", "desc": "1日1回、あなたのための1枚を。毎日カードが変わります。朝のルーティンにどうぞ。"}, {"id": "aura", "file": "オーラカラー診断.html", "title": "オーラカラー診断", "emoji": "🫧", "desc": "あなたのまわりにただようオーラの色を、生年月日から診断。プロフィール画像にもぴったりな、あなただけのカラーカードつき。"}];
+(() => {
+// オーラカラー診断(数秘術のライフパス → メインオーラ / 星座のエレメント → サブオーラ)
+window.PRODUCT = {
+  id: "aura",
+  file: "オーラカラー診断.html",
+  title: "オーラカラー診断",
+  emoji: "🫧",
+  colors: ["#3f7fbf", "#1a1540"],
+  hashtag: "オーラカラー診断",
+  catch: "あなたのまわりにただよう<b>オーラの色</b>を、生年月日から診断。<br>プロフィール画像にもぴったりな、あなただけのカラーカードつき。",
+  badges: ["オーラ", "カラー診断", "無料"],
+  button: "オーラを見る",
+  inputs: [
+    { id: "birth", type: "date", label: "生年月日", value: "2000-01-01" },
+    { id: "name", type: "text", label: "ニックネーム", optional: true, placeholder: "例: るな" },
+  ],
+  paidTitle: "オーラ完全鑑定",
+  paidMenu: ["2027年にあなたのオーラが変わる色", "オーラを強くする開運アイテム・場所", "相性のいいオーラカラー", "オーラに合う恋愛と仕事"],
+
+  compute({ birth, name }) {
+    const lp = U.lifePath(birth.y, birth.m, birth.d);
+    const A = AURA[lp];
+    const z = U.zodiac(birth.m, birth.d);
+    const S = SUB[z.elem];
+    const py = U.personalYear(birth.m, birth.d, 2027);
+    const Y = AURA[py];
+    const who = name ? `${name}さん` : "あなた";
+    const sw = (hex) => `<span style="display:inline-block;width:1.1em;height:1.1em;border-radius:50%;background:${hex};vertical-align:-0.15em;box-shadow:0 0 12px ${hex}"></span>`;
+
+    const free =
+      `<div style="height:140px;border-radius:16px;margin-bottom:12px;background:radial-gradient(circle at 50% 55%, #fff8 0%, ${A.hex} 35%, ${S.hex} 75%, transparent 100%);filter:blur(1px)"></div>` +
+      U.big(`${who}のオーラは`, A.name, `サブカラー: ${S.name}`) +
+      U.p(A.text) +
+      `<h3>${sw(S.hex)} サブカラー ${U.esc(S.name)}</h3>` +
+      U.p(S.text) +
+      U.h("オーラが強い人の特徴") +
+      U.chips(A.kw);
+
+    const paid =
+      U.h(`2027年のあなたのオーラ: ${Y.name}`) +
+      U.p(`2027年は、あなたのオーラに「${Y.name}」がまざりはじめる年。${Y.year}`) +
+      U.h("オーラを強くする開運アイテム・場所") +
+      U.chips(A.items) +
+      U.h("相性のいいオーラ") +
+      U.p(A.match) +
+      U.h("恋愛") + U.p(A.love) +
+      U.h("仕事") + U.p(A.work);
+
+    return {
+      free,
+      paid,
+      paidTeaser: U.p(Y.year),
+      share: `わたしのオーラは「${A.name}」×「${S.name}」でした🫧`,
+      card: { emoji: "🫧", kicker: `${who}のオーラは`, big: A.name, lines: [`サブカラー: ${S.name}`, A.kw.slice(0, 3).join("・")] },
+    };
+  },
+};
+
+const AURA = {
+  1: { name: "レッド", hex: "#ff4d5e", kw: ["行動力", "情熱", "リーダー"], text: "燃えるような赤いオーラ。エネルギッシュで、思い立ったらすぐ動ける人。あなたの熱量が、まわりの人の背中を押します。", items: ["赤いリップ・小物", "朝のランニング", "スタジアム・ライブ会場"], match: "オレンジやゴールドのオーラの人と、最強のチームに。", love: "好きになったら一直線。ストレートな告白が成功しやすいタイプ。", work: "スピードが求められる仕事や、新規事業で輝きます。", year: "行動のエネルギーが高まり、止まっていたことが一気に動きだします。" },
+  2: { name: "オレンジ", hex: "#ff9a3c", kw: ["社交的", "あたたかい", "楽しい"], text: "夕焼けのようなオレンジのオーラ。人なつっこく、誰とでもすぐ仲よくなれる人。あなたのまわりには、いつも笑い声があります。", items: ["柑橘系の香り", "友だちとの食事", "カフェ"], match: "ブルーのオーラの人とは、おたがいを補いあえる関係。", love: "友だちから恋人になるパターンが多いタイプ。自然体が一番の魅力。", work: "チームワークや接客で力を発揮します。", year: "人とのつながりが広がり、協力者が次々とあらわれます。" },
+  3: { name: "イエロー", hex: "#ffd84d", kw: ["明るい", "好奇心", "ユーモア"], text: "ひまわりのような黄色のオーラ。好奇心いっぱいで、楽しいことを見つける天才。あなたの言葉には、人を元気にする力があります。", items: ["黄色い花", "新しい本", "日当たりのいい場所"], match: "パープルのオーラの人から、深い刺激をもらえます。", love: "会話が楽しい相手にひかれるタイプ。笑いのツボが合う人と◎。", work: "企画・発信・教える仕事で才能が開花。", year: "表現力が高まり、あなたの発信が多くの人に届きます。" },
+  4: { name: "グリーン", hex: "#4dd68a", kw: ["安心感", "誠実", "癒し"], text: "森のようなグリーンのオーラ。そばにいるだけで人を落ち着かせる、癒しの人。まじめで、信頼を大切にします。", items: ["観葉植物", "森林浴", "緑茶"], match: "ピンクのオーラの人とは、穏やかで長続きする関係に。", love: "ゆっくり信頼を深める恋が得意。結婚向きのタイプ。", work: "医療・福祉・管理など、人を支える仕事で信頼を集めます。", year: "心と体が整い、生活の土台がしっかり固まります。" },
+  5: { name: "ターコイズ", hex: "#3fd8d0", kw: ["自由", "変化", "発信力"], text: "南の海のようなターコイズのオーラ。自由を愛し、変化を楽しめる人。あなたの軽やかさが、新しい風を運んできます。", items: ["旅行", "ターコイズのアクセサリー", "海辺"], match: "グリーンのオーラの人が、あなたの帰る場所に。", love: "刺激的な恋にひかれるタイプ。おたがいの自由を尊重できる人と◎。", work: "旅行・メディア・SNSなど、動きのある仕事がぴったり。", year: "変化の風が吹き、新しい場所や人との出会いがあります。" },
+  6: { name: "ピンク", hex: "#ff8fc4", kw: ["愛され", "やさしさ", "美"], text: "桜のようなピンクのオーラ。やさしく、愛にあふれた人。人を大切にするあなたは、自然と愛される運命です。", items: ["ピンクの小物", "花束", "ていねいなスキンケア"], match: "グリーンやブルーのオーラの人と、あたたかい関係に。", love: "愛され運は全オーラでトップクラス。自分を大切にするほど、恋もうまくいきます。", work: "美容・ファッション・保育など、人を笑顔にする仕事で輝きます。", year: "愛情運がぐっと高まり、大切な人との絆が深まります。" },
+  7: { name: "パープル", hex: "#a36bff", kw: ["神秘的", "直感", "深い"], text: "夜明け前の空のようなパープルのオーラ。直感が鋭く、目に見えないものを感じとれる人。ミステリアスな魅力があります。", items: ["アメジスト", "お香", "美術館"], match: "イエローのオーラの人が、あなたの世界を明るくしてくれます。", love: "心の深いところでつながれる人を求めるタイプ。", work: "研究・アート・占い・カウンセリングなど、深い感性をいかす仕事。", year: "直感がさらにさえて、大事な答えがふっと降りてきます。" },
+  8: { name: "ゴールド", hex: "#ffc94d", kw: ["成功", "豊かさ", "カリスマ"], text: "かがやくゴールドのオーラ。成功とお金に縁がある、カリスマ性の持ち主。あなたが本気を出すと、大きなものが動きます。", items: ["金色のアクセサリー", "上質な財布", "高層階のラウンジ"], match: "レッドのオーラの人と組むと、大きな成功をつかめます。", love: "尊敬できる相手にひかれるタイプ。おたがいを高めあえる恋。", work: "経営・金融・営業など、結果が数字で見える仕事で輝きます。", year: "豊かさのエネルギーが強まり、収入アップのチャンスが来ます。" },
+  9: { name: "ラベンダー", hex: "#c7a8ff", kw: ["包容力", "やさしさ", "芸術"], text: "ラベンダー畑のようなやさしい紫のオーラ。すべてを包みこむ包容力と、豊かな感性を持つ人。", items: ["ラベンダーの香り", "音楽", "夕暮れの散歩"], match: "オレンジのオーラの人が、あなたを楽しい場所へ連れ出してくれます。", love: "相手のすべてを受け入れる、深い愛の人。尽くしすぎには注意。", work: "芸術・ボランティア・教育など、人の心に届く仕事。", year: "心の整理が進み、手放したぶんだけ新しい幸せが入ってきます。" },
+  11: { name: "シルバー", hex: "#d8e0f0", kw: ["直感", "ひらめき", "スピリチュアル"], text: "月の光のようなシルバーのオーラ。とても珍しい色で、ひらめきと直感にめぐまれた人。あなたの言葉が、誰かの道しるべになります。", items: ["ムーンストーン", "満月の夜の散歩", "日記"], match: "ゴールドのオーラの人と、夢を形にできる関係に。", love: "運命的な出会いを引きよせやすいタイプ。直感を信じて。", work: "表現・発信・ヒーリングなど、インスピレーションをいかす仕事。", year: "インスピレーションが冴えわたり、ふしぎな偶然が増えます。" },
+  22: { name: "ホワイト", hex: "#ffffff", kw: ["大きな夢", "純粋", "実現力"], text: "光そのもののようなホワイトのオーラ。とても珍しい色で、大きな夢を現実にする力を持つ人。純粋な想いが、多くの人を動かします。", items: ["白い服", "パワースポット巡り", "朝の瞑想"], match: "どの色のオーラとも調和できる、特別な存在。", love: "理想の愛をまっすぐ追いかけるタイプ。妥協しなくて大丈夫。", work: "大きなプロジェクト・社会を変える仕事で本領を発揮。", year: "大きな夢が、ぐっと現実に近づく年になります。" },
+  33: { name: "レインボー", hex: "#ff9ae0", kw: ["唯一無二", "愛", "天才肌"], text: "すべての色をまとったレインボーのオーラ。ごくまれにしかいない、唯一無二の人。どんな人も包みこみ、場を明るく変える天性の魅力があります。", items: ["プリズム・サンキャッチャー", "虹の出る場所", "人へのプレゼント"], match: "あなたは全オーラと相性◎。特にピンクのオーラの人と深い絆を結べます。", love: "たくさんの人に愛される運命。大切な一人を見きわめて。", work: "エンタメ・アート・人を癒す仕事など、存在そのものが価値になる仕事。", year: "あなたの魅力が多くの人に届き、人気運が高まります。" },
+};
+const SUB = {
+  火: { name: "スカーレット", hex: "#ff6a4d", text: "情熱の「火」のサブカラー。やると決めた時の集中力はばつぐん。" },
+  土: { name: "アンバー", hex: "#e0a85a", text: "安定の「地」のサブカラー。地に足のついた現実力が、あなたの夢を支えます。" },
+  風: { name: "スカイブルー", hex: "#7cc8ff", text: "知性の「風」のサブカラー。軽やかなコミュニケーション力で、ご縁を広げます。" },
+  水: { name: "アクアマリン", hex: "#6ee0d0", text: "感情の「水」のサブカラー。人の気持ちを感じとる、やさしい感受性を持っています。" },
+};
+
+U.start();
+})();
+</script>
+</body>
+</html>

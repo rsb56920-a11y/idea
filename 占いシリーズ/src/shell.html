@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>{{TITLE}}</title>
+<meta name="description" content="{{DESC}}" />
+<meta property="og:title" content="{{TITLE}}" />
+<meta property="og:description" content="{{DESC}}" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="theme-color" content="#1f1a3a" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" />
+<style>
+{{CSS}}
+</style>
+<!-- 販売URL・合言葉などの設定(同じフォルダの 設定.js。なくても動きます) -->
+<script src="設定.js"></script>
+</head>
+<body>
+<canvas id="sky"></canvas>
+<main>
+  <header class="hero">
+    <div class="emoji" id="emoji"></div>
+    <h1 id="title"></h1>
+    <p class="catch" id="catch"></p>
+    <div class="badges" id="badges"></div>
+  </header>
+  <form class="card form" id="form"></form>
+  <section id="result" hidden>
+    <div class="card" id="free"></div>
+    <div class="actions">
+      <button type="button" id="saveImg">📸 結果を画像で保存</button>
+      <button type="button" id="shareX">𝕏 でシェア</button>
+    </div>
+    <div class="card paid" id="paid" hidden></div>
+    <button type="button" class="ghost" id="again">もう一度占う</button>
+  </section>
+  <section class="more">
+    <h2>ほかの占いも</h2>
+    <div class="others" id="others"></div>
+  </section>
+  <footer><span id="site"></span><br /><small>占いは楽しむためのものです。大切な判断はご自身で。</small></footer>
+</main>
+<div class="modal" id="modal" hidden>
+  <div class="sheet">
+    <img id="cardImg" alt="占い結果の画像" />
+    <p>スマホは画像を長押しで保存できます</p>
+    <a class="buy" id="dl">画像をダウンロード</a>
+    <button type="button" class="ghost" id="close">とじる</button>
+  </div>
+</div>
+<script>
+{{JS}}
+</script>
+</body>
+</html>

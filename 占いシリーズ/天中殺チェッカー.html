@@ -1,0 +1,639 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>天中殺チェッカー</title>
+<meta name="description" content="あなたの「天中殺」はいつ?2026-2027年は 午未天中殺 の人が要注意。生年月日だけで、30秒でわかります。" />
+<meta property="og:title" content="天中殺チェッカー" />
+<meta property="og:description" content="あなたの「天中殺」はいつ?2026-2027年は 午未天中殺 の人が要注意。生年月日だけで、30秒でわかります。" />
+<meta property="og:type" content="website" />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="theme-color" content="#1f1a3a" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Zen+Maru+Gothic:wght@500;700;900&display=swap" />
+<style>
+:root { --a: #5b3fa8; --b: #1f1a3a; --gold: #ffecaa; --ink: #f6f2ff; --card: rgba(255, 255, 255, 0.08); --line: rgba(255, 236, 170, 0.35); }
+* { box-sizing: border-box; }
+html { background: #120e28; }
+body {
+  margin: 0; min-height: 100vh; color: var(--ink);
+  font-family: "Zen Maru Gothic", "Hiragino Maru Gothic ProN", "Yu Gothic", "Meiryo", sans-serif;
+  background: radial-gradient(ellipse at 50% -10%, var(--a) 0%, transparent 60%), linear-gradient(180deg, var(--b) 0%, #120e28 100%);
+  background-attachment: fixed; line-height: 1.8;
+}
+#sky { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+main { position: relative; max-width: 640px; margin: 0 auto; padding: 24px 16px 60px; }
+.hero { text-align: center; padding: 28px 0 10px; }
+.hero .emoji { font-size: 64px; animation: float 4s ease-in-out infinite; }
+@keyframes float { 50% { transform: translateY(-8px) rotate(4deg); } }
+h1 {
+  margin: 4px 0; font-size: clamp(28px, 7vw, 40px); font-weight: 900; letter-spacing: 0.04em;
+  background: linear-gradient(100deg, #fff 30%, var(--gold) 50%, #fff 70%); background-size: 250% 100%;
+  -webkit-background-clip: text; background-clip: text; color: transparent; animation: shine 5s ease-in-out infinite;
+}
+@keyframes shine { 0%, 100% { background-position: 100% 0; } 50% { background-position: 0 0; } }
+.catch { margin: 8px 0; opacity: 0.92; }
+.badges span { display: inline-block; margin: 3px; padding: 2px 12px; border: 1px solid var(--line); border-radius: 99px; font-size: 13px; color: var(--gold); }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 20px; margin: 18px 0; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.form label { display: block; margin-bottom: 14px; font-weight: 700; }
+.form small { font-weight: 500; opacity: 0.7; margin-left: 6px; }
+input { display: block; width: 100%; margin-top: 6px; padding: 12px 14px; font: inherit; font-size: 17px; color: #221b44; background: #fff; border: 0; border-radius: 12px; }
+button, .buy { font: inherit; cursor: pointer; }
+.go, .buy {
+  display: block; width: 100%; padding: 14px; border: 0; border-radius: 99px; text-align: center; text-decoration: none;
+  font-size: 18px; font-weight: 900; color: #2a1d57; background: linear-gradient(90deg, var(--gold), #ffd36e); box-shadow: 0 6px 24px rgba(255, 211, 110, 0.35);
+}
+.go:active, .buy:active { transform: scale(0.98); }
+.note { font-size: 12.5px; opacity: 0.7; margin: 10px 0 0; }
+.reveal .card, .reveal .actions { animation: rise 0.9s cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+.reveal .paid { animation-delay: 0.25s; }
+@keyframes rise { from { opacity: 0; transform: translateY(24px) scale(0.98); } }
+.big { text-align: center; margin: 4px 0 12px; }
+.big .k { font-size: 14px; letter-spacing: 0.2em; color: var(--gold); }
+.big .v { font-size: clamp(30px, 8vw, 44px); font-weight: 900; line-height: 1.3; text-shadow: 0 0 22px rgba(255, 236, 170, 0.45); }
+.big .s { opacity: 0.85; }
+.card h3 { margin: 18px 0 6px; color: var(--gold); font-size: 18px; }
+.card h3:first-child { margin-top: 0; }
+.card p { margin: 6px 0; }
+.meter { height: 12px; background: rgba(255, 255, 255, 0.15); border-radius: 99px; overflow: hidden; margin: 6px 0 12px; }
+.meter i { display: block; height: 100%; background: linear-gradient(90deg, var(--gold), #ff9ecb); border-radius: 99px; animation: grow 1.4s ease both; }
+@keyframes grow { from { width: 0 !important; } }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { padding: 4px 12px; border-radius: 99px; background: rgba(255, 255, 255, 0.12); font-size: 14px; }
+table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+td, th { padding: 6px 4px; border-bottom: 1px solid rgba(255, 255, 255, 0.12); text-align: left; vertical-align: top; }
+th { color: var(--gold); white-space: nowrap; }
+.actions { display: flex; gap: 10px; }
+.actions button, .ghost { flex: 1; padding: 12px; border-radius: 99px; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.08); color: var(--ink); font-weight: 700; }
+.ghost { display: block; width: 100%; margin-top: 12px; }
+.paid .menu { margin: 6px 0 12px; padding-left: 1.2em; }
+.paid .blur { max-height: 180px; overflow: hidden; filter: blur(6px); opacity: 0.6; user-select: none; pointer-events: none; -webkit-mask-image: linear-gradient(#000 40%, transparent); mask-image: linear-gradient(#000 40%, transparent); margin-bottom: 14px; }
+.code { display: flex; gap: 8px; margin-top: 12px; }
+.code input { margin: 0; }
+.code button { flex: none; padding: 0 18px; border-radius: 12px; border: 0; background: var(--a); color: #fff; font-weight: 700; }
+.more h2 { font-size: 18px; text-align: center; color: var(--gold); margin-top: 40px; }
+.others { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.others a { display: flex; align-items: center; gap: 8px; padding: 12px; border-radius: 14px; background: var(--card); border: 1px solid var(--line); color: var(--ink); text-decoration: none; font-size: 14px; }
+.others b { font-size: 26px; }
+footer { text-align: center; margin-top: 40px; opacity: 0.7; font-size: 13px; }
+.modal { position: fixed; inset: 0; background: rgba(8, 5, 20, 0.85); display: grid; place-items: center; padding: 16px; z-index: 10; }
+.modal[hidden] { display: none; }
+.sheet { max-width: 420px; width: 100%; text-align: center; }
+.sheet img { width: 100%; border-radius: 14px; box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5); }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; } }
+
+</style>
+<!-- 販売URL・合言葉などの設定(同じフォルダの 設定.js。なくても動きます) -->
+<script src="設定.js"></script>
+</head>
+<body>
+<canvas id="sky"></canvas>
+<main>
+  <header class="hero">
+    <div class="emoji" id="emoji"></div>
+    <h1 id="title"></h1>
+    <p class="catch" id="catch"></p>
+    <div class="badges" id="badges"></div>
+  </header>
+  <form class="card form" id="form"></form>
+  <section id="result" hidden>
+    <div class="card" id="free"></div>
+    <div class="actions">
+      <button type="button" id="saveImg">📸 結果を画像で保存</button>
+      <button type="button" id="shareX">𝕏 でシェア</button>
+    </div>
+    <div class="card paid" id="paid" hidden></div>
+    <button type="button" class="ghost" id="again">もう一度占う</button>
+  </section>
+  <section class="more">
+    <h2>ほかの占いも</h2>
+    <div class="others" id="others"></div>
+  </section>
+  <footer><span id="site"></span><br /><small>占いは楽しむためのものです。大切な判断はご自身で。</small></footer>
+</main>
+<div class="modal" id="modal" hidden>
+  <div class="sheet">
+    <img id="cardImg" alt="占い結果の画像" />
+    <p>スマホは画像を長押しで保存できます</p>
+    <a class="buy" id="dl">画像をダウンロード</a>
+    <button type="button" class="ghost" id="close">とじる</button>
+  </div>
+</div>
+<script>
+// ==== 共通: SHA-256(合言葉チェック用。file:// でも動くよう自前実装) ====
+const U = {};
+U.sha256 = function(bytes) {
+  const K = new Uint32Array([
+    0x428a2f98, 0x71374491, 0xb5c0fbcf, 0xe9b5dba5, 0x3956c25b, 0x59f111f1, 0x923f82a4, 0xab1c5ed5, 0xd807aa98, 0x12835b01, 0x243185be, 0x550c7dc3,
+    0x72be5d74, 0x80deb1fe, 0x9bdc06a7, 0xc19bf174, 0xe49b69c1, 0xefbe4786, 0x0fc19dc6, 0x240ca1cc, 0x2de92c6f, 0x4a7484aa, 0x5cb0a9dc, 0x76f988da,
+    0x983e5152, 0xa831c66d, 0xb00327c8, 0xbf597fc7, 0xc6e00bf3, 0xd5a79147, 0x06ca6351, 0x14292967, 0x27b70a85, 0x2e1b2138, 0x4d2c6dfc, 0x53380d13,
+    0x650a7354, 0x766a0abb, 0x81c2c92e, 0x92722c85, 0xa2bfe8a1, 0xa81a664b, 0xc24b8b70, 0xc76c51a3, 0xd192e819, 0xd6990624, 0xf40e3585, 0x106aa070,
+    0x19a4c116, 0x1e376c08, 0x2748774c, 0x34b0bcb5, 0x391c0cb3, 0x4ed8aa4a, 0x5b9cca4f, 0x682e6ff3, 0x748f82ee, 0x78a5636f, 0x84c87814, 0x8cc70208,
+    0x90befffa, 0xa4506ceb, 0xbef9a3f7, 0xc67178f2,
+  ]);
+  const H = new Uint32Array([0x6a09e667, 0xbb67ae85, 0x3c6ef372, 0xa54ff53a, 0x510e527f, 0x9b05688c, 0x1f83d9ab, 0x5be0cd19]);
+  const len = bytes.length;
+  const total = ((len + 9 + 63) >> 6) << 6;
+  const m = new Uint8Array(total);
+  m.set(bytes);
+  m[len] = 0x80;
+  const bits = len * 8;
+  const dv = new DataView(m.buffer);
+  dv.setUint32(total - 4, bits >>> 0);
+  dv.setUint32(total - 8, Math.floor(bits / 2 ** 32));
+  const w = new Uint32Array(64);
+  const rotr = (x, n) => (x >>> n) | (x << (32 - n));
+  for (let off = 0; off < total; off += 64) {
+    for (let i = 0; i < 16; i++) w[i] = dv.getUint32(off + i * 4);
+    for (let i = 16; i < 64; i++) {
+      const s0 = rotr(w[i - 15], 7) ^ rotr(w[i - 15], 18) ^ (w[i - 15] >>> 3);
+      const s1 = rotr(w[i - 2], 17) ^ rotr(w[i - 2], 19) ^ (w[i - 2] >>> 10);
+      w[i] = (w[i - 16] + s0 + w[i - 7] + s1) >>> 0;
+    }
+    let [a, b, c, d, e, f, g, h] = H;
+    for (let i = 0; i < 64; i++) {
+      const S1 = rotr(e, 6) ^ rotr(e, 11) ^ rotr(e, 25);
+      const ch = (e & f) ^ (~e & g);
+      const t1 = (h + S1 + ch + K[i] + w[i]) >>> 0;
+      const S0 = rotr(a, 2) ^ rotr(a, 13) ^ rotr(a, 22);
+      const maj = (a & b) ^ (a & c) ^ (b & c);
+      const t2 = (S0 + maj) >>> 0;
+      h = g;
+      g = f;
+      f = e;
+      e = (d + t1) >>> 0;
+      d = c;
+      c = b;
+      b = a;
+      a = (t1 + t2) >>> 0;
+    }
+    H[0] += a;
+    H[1] += b;
+    H[2] += c;
+    H[3] += d;
+    H[4] += e;
+    H[5] += f;
+    H[6] += g;
+    H[7] += h;
+  }
+  const out = new Uint8Array(32);
+  const odv = new DataView(out.buffer);
+  for (let i = 0; i < 8; i++) odv.setUint32(i * 4, H[i]);
+  return out;
+};
+
+// ==== 共通: 計算・画面・シェア・合言葉 ====
+// 各占いは window.PRODUCT = { id, title, ... compute(v) } を用意して U.start() を呼ぶだけ。
+const CFG = Object.assign(
+  { siteName: "星詠みルナの占い館", siteUrl: "", xHandle: "", payUrl: {}, price: {}, unlock: {}, allPassHash: "" },
+  window.URANAI || {},
+);
+
+U.hex = (bytes) => Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+U.hash = (s) => U.hex(U.sha256(new TextEncoder().encode(s)));
+U.esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+// ---- 数・暦の計算 ----
+// 数秘術: 数字を1桁に(11/22/33 はマスターナンバーとして残す)
+U.reduce = (n, keepMaster = true) => {
+  while (n > 9 && !(keepMaster && (n === 11 || n === 22 || n === 33))) n = String(n).split("").reduce((a, c) => a + +c, 0);
+  return n;
+};
+U.digitSum = (s) => String(s).replace(/\D/g, "").split("").reduce((a, c) => a + +c, 0);
+U.lifePath = (y, m, d) => U.reduce(U.digitSum(`${y}${m}${d}`));
+U.personalYear = (m, d, year) => U.reduce(U.digitSum(`${m}${d}${year}`), false);
+U.personalMonth = (py, month) => U.reduce(py + month, false);
+// ユリウス通日(グレゴリオ暦)
+U.jdn = (y, m, d) => {
+  const a = Math.floor((14 - m) / 12), yy = y + 4800 - a, mm = m + 12 * a - 3;
+  return d + Math.floor((153 * mm + 2) / 5) + 365 * yy + Math.floor(yy / 4) - Math.floor(yy / 100) + Math.floor(yy / 400) - 32045;
+};
+// 日柱(0=甲子 … 59=癸亥)。2000/1/1 = 戊午(54)
+U.dayPillar = (y, m, d) => (U.jdn(y, m, d) + 49) % 60;
+U.STEMS = "甲乙丙丁戊己庚辛壬癸";
+U.BRANCHES = "子丑寅卯辰巳午未申酉戌亥";
+U.ELEM = ["木", "火", "土", "金", "水"];
+U.pillarName = (i) => U.STEMS[i % 10] + U.BRANCHES[i % 12];
+U.yearBranch = (y) => (((y - 4) % 12) + 12) % 12;
+U.yearStem = (y) => (((y - 4) % 10) + 10) % 10;
+// 12星座
+U.ZODIAC = [
+  ["やぎ座", 1, 19, "土"], ["みずがめ座", 2, 18, "風"], ["うお座", 3, 20, "水"], ["おひつじ座", 4, 19, "火"],
+  ["おうし座", 5, 20, "土"], ["ふたご座", 6, 21, "風"], ["かに座", 7, 22, "水"], ["しし座", 8, 22, "火"],
+  ["おとめ座", 9, 22, "土"], ["てんびん座", 10, 23, "風"], ["さそり座", 11, 22, "水"], ["いて座", 12, 21, "火"],
+];
+U.zodiac = (m, d) => {
+  const z = U.ZODIAC[m - 1];
+  const hit = d <= z[2] ? z : U.ZODIAC[m % 12];
+  return { name: hit[0], elem: hit[3] };
+};
+// 文字列から決まった乱数(同じ入力なら同じ結果)
+U.rng = (seed) => {
+  let h = parseInt(U.hash(seed).slice(0, 8), 16) || 1;
+  return () => {
+    h ^= h << 13; h >>>= 0; h ^= h >>> 17; h ^= h << 5; h >>>= 0;
+    return h / 4294967296;
+  };
+};
+U.today = () => {
+  const t = new Date();
+  return { y: t.getFullYear(), m: t.getMonth() + 1, d: t.getDate(), key: `${t.getFullYear()}-${t.getMonth() + 1}-${t.getDate()}` };
+};
+U.parseDate = (s) => {
+  const m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s || "");
+  if (!m) return null;
+  const y = +m[1], mo = +m[2], d = +m[3];
+  const t = new Date(y, mo - 1, d);
+  if (t.getMonth() !== mo - 1 || y < 1900 || y > 2030) return null;
+  return { y, m: mo, d };
+};
+
+// ---- 画面 ----
+const $ = (s) => document.querySelector(s);
+
+function drawSky() {
+  const cv = $("#sky");
+  const ctx = cv.getContext("2d");
+  let W, H, stars;
+  const resize = () => {
+    W = cv.width = innerWidth;
+    H = cv.height = innerHeight;
+    stars = Array.from({ length: Math.round((W * H) / 9000) }, () => ({ x: Math.random() * W, y: Math.random() * H, r: Math.random() * 1.3 + 0.3, p: Math.random() * 6 }));
+  };
+  resize();
+  addEventListener("resize", resize);
+  const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let last = 0;
+  const tick = (t) => {
+    requestAnimationFrame(tick);
+    if (t - last < 50) return; // 20fps でかるく
+    last = t;
+    ctx.clearRect(0, 0, W, H);
+    for (const s of stars) {
+      const a = reduce ? 0.7 : 0.35 + 0.65 * Math.abs(Math.sin(t / 1400 + s.p));
+      ctx.globalAlpha = a;
+      ctx.fillStyle = "#fff";
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, 7);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  };
+  requestAnimationFrame(tick);
+}
+
+function unlocked(id) {
+  try {
+    return localStorage.getItem("uranai_unlock_" + id) === "1" || localStorage.getItem("uranai_unlock_all") === "1";
+  } catch {
+    return false;
+  }
+}
+function setUnlocked(key) {
+  try {
+    localStorage.setItem("uranai_unlock_" + key, "1");
+  } catch {}
+}
+
+// 結果を画像に(インスタ・Xにそのまま貼れる 1080x1350)
+function makeCard(card, P) {
+  const W = 1080, H = 1350;
+  const cv = document.createElement("canvas");
+  cv.width = W;
+  cv.height = H;
+  const c = cv.getContext("2d");
+  const g = c.createLinearGradient(0, 0, W, H);
+  g.addColorStop(0, P.colors[0]);
+  g.addColorStop(1, P.colors[1]);
+  c.fillStyle = g;
+  c.fillRect(0, 0, W, H);
+  const r = U.rng(card.big + card.kicker);
+  for (let i = 0; i < 160; i++) {
+    c.globalAlpha = 0.25 + r() * 0.75;
+    c.fillStyle = "#fff";
+    c.beginPath();
+    c.arc(r() * W, r() * H, r() * 2.2 + 0.4, 0, 7);
+    c.fill();
+  }
+  c.globalAlpha = 1;
+  c.strokeStyle = "rgba(255,236,170,0.7)";
+  c.lineWidth = 3;
+  c.strokeRect(46, 46, W - 92, H - 92);
+  const font = '"Zen Maru Gothic","Hiragino Maru Gothic ProN","Yu Gothic","Meiryo",sans-serif';
+  c.textAlign = "center";
+  c.fillStyle = "#ffecaa";
+  c.font = `700 44px ${font}`;
+  c.fillText(P.title, W / 2, 150);
+  c.font = `140px ${font}`;
+  c.fillText(card.emoji || P.emoji, W / 2, 360);
+  c.fillStyle = "#fff";
+  c.font = `500 40px ${font}`;
+  c.fillText(card.kicker, W / 2, 470);
+  let fs = 110;
+  c.font = `900 ${fs}px ${font}`;
+  while (c.measureText(card.big).width > W - 160 && fs > 50) c.font = `900 ${(fs -= 6)}px ${font}`;
+  c.shadowColor = "rgba(0,0,0,0.35)";
+  c.shadowBlur = 20;
+  c.fillText(card.big, W / 2, 610);
+  c.shadowBlur = 0;
+  c.font = `500 42px ${font}`;
+  let y = 740;
+  for (const line of card.lines || []) {
+    // 長い行は折り返す
+    let buf = "";
+    for (const ch of line) {
+      if (c.measureText(buf + ch).width > W - 200) {
+        c.fillText(buf, W / 2, y);
+        y += 62;
+        buf = "";
+      }
+      buf += ch;
+    }
+    c.fillText(buf, W / 2, y);
+    y += 78;
+  }
+  c.fillStyle = "#ffecaa";
+  c.font = `700 36px ${font}`;
+  c.fillText(`#${P.hashtag}`, W / 2, H - 150);
+  c.fillStyle = "rgba(255,255,255,0.85)";
+  c.font = `500 32px ${font}`;
+  c.fillText(CFG.siteName + (CFG.xHandle ? `  ${CFG.xHandle}` : ""), W / 2, H - 95);
+  return cv.toDataURL("image/png");
+}
+
+U.start = () => {
+  const P = window.PRODUCT;
+  document.title = `${P.title}|${CFG.siteName}`;
+  document.documentElement.style.setProperty("--a", P.colors[0]);
+  document.documentElement.style.setProperty("--b", P.colors[1]);
+  drawSky();
+  $("#emoji").textContent = P.emoji;
+  $("#title").textContent = P.title;
+  $("#catch").innerHTML = P.catch;
+  $("#badges").innerHTML = (P.badges || []).map((b) => `<span>${U.esc(b)}</span>`).join("");
+  $("#site").textContent = CFG.siteName;
+
+  // 入力欄
+  const form = $("#form");
+  form.innerHTML =
+    P.inputs
+      .map((f) => {
+        const req = f.optional ? "" : "required";
+        const hint = f.optional ? '<small>(なくてもOK)</small>' : "";
+        if (f.type === "date") return `<label>${U.esc(f.label)}${hint}<input type="date" id="in_${f.id}" min="1900-01-01" max="2030-12-31" value="${f.value || ""}" ${req}></label>`;
+        return `<label>${U.esc(f.label)}${hint}<input type="text" id="in_${f.id}" maxlength="20" placeholder="${U.esc(f.placeholder || "")}" ${req}></label>`;
+      })
+      .join("") + `<button class="go" type="submit">${U.esc(P.button || "占う")}</button><p class="note">入力した内容はこの端末の中だけで計算され、どこにも送信されません。</p>`;
+
+  // 前回の入力を復元
+  try {
+    const saved = JSON.parse(localStorage.getItem("uranai_input_" + P.id) || "{}");
+    for (const f of P.inputs) if (saved[f.id]) $("#in_" + f.id).value = saved[f.id];
+  } catch {}
+
+  let last = null;
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    const v = {};
+    const raw = {};
+    for (const f of P.inputs) {
+      const s = $("#in_" + f.id).value.trim();
+      raw[f.id] = s;
+      if (f.type === "date") {
+        if (!s && f.optional) continue;
+        const dt = U.parseDate(s);
+        if (!dt) return alert(`${f.label}を正しく入れてください`);
+        v[f.id] = dt;
+      } else v[f.id] = s;
+    }
+    try {
+      localStorage.setItem("uranai_input_" + P.id, JSON.stringify(raw));
+    } catch {}
+    last = P.compute(v);
+    show(last);
+  });
+
+  function show(res) {
+    const out = $("#result");
+    out.hidden = false;
+    out.classList.remove("reveal");
+    void out.offsetWidth;
+    out.classList.add("reveal");
+    $("#free").innerHTML = res.free;
+    renderPaid(res);
+    setTimeout(() => out.scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+  }
+
+  function renderPaid(res) {
+    const box = $("#paid");
+    if (!res.paid) return (box.hidden = true);
+    box.hidden = false;
+    if (unlocked(P.id)) {
+      box.innerHTML = `<h3>🔓 ${U.esc(P.paidTitle)}</h3>${res.paid}`;
+      return;
+    }
+    const pay = CFG.payUrl[P.id] || CFG.payUrl.all || "";
+    const price = CFG.price[P.id] || CFG.price.all || "";
+    box.innerHTML = `
+      <h3>🔒 ${U.esc(P.paidTitle)}</h3>
+      <ul class="menu">${(P.paidMenu || []).map((m) => `<li>${U.esc(m)}</li>`).join("")}</ul>
+      <div class="blur" aria-hidden="true">${res.paidTeaser || res.paid}</div>
+      ${pay ? `<a class="buy" href="${U.esc(pay)}" target="_blank" rel="noopener">完全版を見る${price ? `(${U.esc(price)})` : ""}</a>` : `<p class="note">(販売ページのURLは 設定.js の payUrl に書くとここにボタンが出ます)</p>`}
+      <form class="code" id="codeForm"><input id="code" placeholder="購入後に届く合言葉" autocomplete="off"><button>ひらく</button></form>
+      <p class="note" id="codeMsg">購入後の画面・メールに書いてある「合言葉」を入れると、この端末でずっと見られます。</p>`;
+    $("#codeForm").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const h = U.hash($("#code").value.trim());
+      if (h === CFG.unlock[P.id]) setUnlocked(P.id);
+      else if (CFG.allPassHash && h === CFG.allPassHash) setUnlocked("all");
+      else return ($("#codeMsg").textContent = "合言葉がちがうようです。全角/半角や空白を確かめてね。");
+      renderPaid(res);
+    });
+  }
+
+  $("#saveImg").addEventListener("click", () => {
+    if (!last) return;
+    const url = makeCard(last.card, P);
+    const m = $("#modal");
+    m.hidden = false;
+    $("#cardImg").src = url;
+    $("#dl").href = url;
+    $("#dl").download = `${P.title}.png`;
+  });
+  $("#modal").addEventListener("click", (e) => {
+    if (e.target.id === "modal" || e.target.id === "close") $("#modal").hidden = true;
+  });
+  $("#shareX").addEventListener("click", () => {
+    if (!last) return;
+    const url = CFG.siteUrl ? CFG.siteUrl.replace(/\/?$/, "/") + encodeURIComponent(P.file || "") : "";
+    const text = `${last.share}\n#${P.hashtag} #占い`;
+    open(`https://x.com/intent/post?text=${encodeURIComponent(text)}${url ? `&url=${encodeURIComponent(url)}` : ""}`, "_blank", "noopener");
+  });
+  $("#again").addEventListener("click", () => scrollTo({ top: 0, behavior: "smooth" }));
+
+  // ほかの占い(回遊用)
+  const others = (window.CATALOG || []).filter((c) => c.id !== P.id);
+  $("#others").innerHTML = others.map((c) => `<a href="${encodeURI(c.file)}"><b>${c.emoji}</b><span>${U.esc(c.title)}</span></a>`).join("");
+};
+
+// ---- 結果HTMLの部品 ----
+U.big = (k, v, s) => `<div class="big"><div class="k">${U.esc(k)}</div><div class="v">${U.esc(v)}</div>${s ? `<div class="s">${U.esc(s)}</div>` : ""}</div>`;
+U.meter = (pct) => `<div class="meter"><i style="width:${Math.max(0, Math.min(100, pct))}%"></i></div>`;
+U.chips = (list) => `<div class="row">${list.map((c) => `<span class="chip">${U.esc(c)}</span>`).join("")}</div>`;
+U.p = (s) => `<p>${U.esc(s)}</p>`;
+U.h = (s) => `<h3>${U.esc(s)}</h3>`;
+
+window.CATALOG = [{"id": "tenchusatsu", "file": "天中殺チェッカー.html", "title": "天中殺チェッカー", "emoji": "🌑", "desc": "あなたの「天中殺」はいつ?2026-2027年は 午未天中殺 の人が要注意。生年月日だけで、30秒でわかります。"}, {"id": "numerology2027", "file": "数秘術2027年の運勢.html", "title": "数秘術 2027年の運勢", "emoji": "🔢", "desc": "生年月日の数字が教える、あなたの2027年のテーマ。いまの流れと、来年いちばん動くべき月がわかります。"}, {"id": "oshi", "file": "推し相性占い.html", "title": "推しとの運命度占い", "emoji": "💘", "desc": "あなたと推しの誕生日から、ふたりの運命度を占います。推しの誕生日は公式プロフィールでチェック!"}, {"id": "saju", "file": "韓国式サジュ診断.html", "title": "韓国式サジュ診断", "emoji": "🌸", "desc": "韓国で大人気の「サジュ(四柱推命)」。生まれた日の干支から、あなたの本当の性質を10タイプで診断します。"}, {"id": "tarot", "file": "今日のタロット.html", "title": "今日のタロット", "emoji": "🃏", "desc": "1日1回、あなたのための1枚を。毎日カードが変わります。朝のルーティンにどうぞ。"}, {"id": "aura", "file": "オーラカラー診断.html", "title": "オーラカラー診断", "emoji": "🫧", "desc": "あなたのまわりにただようオーラの色を、生年月日から診断。プロフィール画像にもぴったりな、あなただけのカラーカードつき。"}];
+(() => {
+// 天中殺チェッカー(算命学)。2026-2027年は「午未天中殺」の人の天中殺で話題になりやすい。
+window.PRODUCT = {
+  id: "tenchusatsu",
+  file: "天中殺チェッカー.html",
+  title: "天中殺チェッカー",
+  emoji: "🌑",
+  colors: ["#3a2a6e", "#140f2e"],
+  hashtag: "天中殺チェッカー",
+  catch: "あなたの「天中殺」はいつ?<br>2026-2027年は <b>午未天中殺</b> の人が要注意。生年月日だけで、30秒でわかります。",
+  badges: ["算命学", "無料", "登録なし"],
+  button: "天中殺をしらべる",
+  inputs: [{ id: "birth", type: "date", label: "生年月日", value: "1995-01-01" }],
+  paidTitle: "天中殺ガイド完全版",
+  paidMenu: ["2026〜2028年の36か月 月ごとの運気カレンダー", "天中殺中に「やっていいこと・避けたいこと」くわしく", "あなたのタイプ別 開運アクション7つ", "天中殺タイプ別の相性(恋愛・仕事)"],
+
+  compute({ birth }) {
+    const dp = U.dayPillar(birth.y, birth.m, birth.d);
+    const g = Math.floor(dp / 10);
+    const T = TYPES[g];
+    const t = U.today();
+    // 算命学の1年は立春(2/4ごろ)から
+    const nowYear = t.m < 2 || (t.m === 2 && t.d < 4) ? t.y - 1 : t.y;
+    const inTen = (y) => T.br.includes(U.yearBranch(y));
+    const years = [];
+    for (let y = nowYear - 1; years.length < 4 && y < nowYear + 13; y++) if (inTen(y) && y >= nowYear - 1) years.push(y);
+    const cur = inTen(nowYear);
+    // 今が天中殺2年目の後半なら「最後の年」
+    const next = years.find((y) => y >= nowYear && !inTen(y - 1)) || years.find((y) => y > nowYear);
+    const status = cur ? `いま天中殺の${inTen(nowYear - 1) ? "2年目(出口が見えてきた時期)" : "1年目"}です` : `次の天中殺は ${next}年〜${next + 1}年`;
+    const monthTxt = T.months.map((m) => `${m}月`).join("・");
+
+    const free =
+      U.big("あなたの天中殺", `${T.name}天中殺`, `日柱: ${U.pillarName(dp)}`) +
+      `<p style="text-align:center;font-weight:700;color:${cur ? "#ffb3c7" : "#b8f0c8"}">${cur ? "⚠️ " : "🌙 "}${U.esc(status)}</p>` +
+      U.h("天中殺の年") +
+      U.chips(years.filter((y) => !inTen(y - 1)).map((y) => `${y}〜${y + 1}年`)) +
+      U.h("毎年の天中殺の月") +
+      U.p(`${monthTxt}(節入りから。${T.months[0]}月はじめ〜${T.months[1] + 1}月はじめごろ)`) +
+      U.h("あなたの本質") +
+      U.p(T.nature) +
+      U.h("いまのあなたへ") +
+      U.p(T.now) +
+      U.h("天中殺を上手にすごすコツ") +
+      U.p(T.tip);
+
+    // 36か月カレンダー
+    const rows = [];
+    for (let y = 2026; y <= 2028; y++) {
+      for (let m = 1; m <= 12; m++) {
+        const mb = m % 12; // 1月=丑(1) … 12月=子(0)
+        const yb = U.yearBranch(m === 1 ? y - 1 : y); // 1月は前の年(立春前)
+        const yTen = T.br.includes(yb);
+        const mTen = T.br.includes(mb);
+        const off = (mb - T.br[0] + 12) % 12; // 天中殺の月から何か月目か
+        let mark = ["", "", "○ 回復:体と心を整える", "○ 回復:体と心を整える", "◎ 人の縁が広がる", "◎ 人の縁が広がる", "★ 追い風:はじめるならこの月", "★ 追い風:はじめるならこの月", "○ 実力を積む", "○ 実力を積む", "△ 整理:手放すと次が入る", "△ 整理:手放すと次が入る"][off];
+        if (yTen && mTen) mark = "◆ 天中殺の中の天中殺:守りに徹して";
+        else if (mTen) mark = "▲ 天中殺の月:新しいことは準備だけ";
+        else if (yTen) mark = "△ 天中殺の年:" + (off >= 6 && off <= 7 ? "続けてきたことが実る" : "続けてきたことを深める");
+        rows.push(`<tr><th>${y}/${m}</th><td>${mark}</td></tr>`);
+      }
+    }
+    const paid =
+      U.h("2026〜2028年 月ごとの運気") +
+      `<table>${rows.join("")}</table><p class="note">★=動くと伸びる月 / ▲◆=新しい契約・引っ越し・告白はできれば避けたい月</p>` +
+      U.h("天中殺中に やっていいこと") +
+      `<ul>${T.ok.map((s) => `<li>${U.esc(s)}</li>`).join("")}</ul>` +
+      U.h("天中殺中に 避けたいこと") +
+      `<ul>${T.ng.map((s) => `<li>${U.esc(s)}</li>`).join("")}</ul>` +
+      U.h("あなたの開運アクション7") +
+      `<ol>${T.acts.map((s) => `<li>${U.esc(s)}</li>`).join("")}</ol>` +
+      U.h("相性") +
+      U.p(T.match);
+
+    return {
+      free,
+      paid,
+      paidTeaser: `<table>${rows.slice(0, 8).join("")}</table>`,
+      share: cur ? `わたしは「${T.name}天中殺」でいま天中殺中でした…🌑` : `わたしは「${T.name}天中殺」。次の天中殺は${next}年から🌑`,
+      card: { emoji: "🌑", kicker: "わたしの天中殺は", big: `${T.name}天中殺`, lines: [status, `天中殺の月: ${monthTxt}`] },
+    };
+  },
+};
+
+const TYPES = [
+  {
+    name: "戌亥", br: [10, 11], months: [10, 11],
+    nature: "目に見えない世界や精神性に強い、スケールの大きな人。常識の枠にとらわれず、独自の価値観で生きるほど運が開きます。家族や組織の型にはまるより、自分の世界を持つことが大切。",
+    tip: "戌亥天中殺の人は、天中殺の時期に「内面を深める」と大きく伸びます。学び・創作・旅がおすすめ。",
+    now: "いまは心の声を聞くとき。人に合わせすぎず、ひとりの時間をつくると、次の12年の方向が自然と見えてきます。",
+    ok: ["学び直し・資格の勉強", "創作・発信を続けること", "神社やお寺、自然の多い場所への旅", "断捨離と部屋の浄化"],
+    ng: ["勢いでの独立・起業", "大きな借入れ", "価値観の合わない相手との急な結婚"],
+    acts: ["朝日を浴びる", "日記に夢を書く", "月に一度は遠出する", "古い人間関係を整理する", "紫か紺のものを持つ", "寝る前にスマホを置く", "感謝を言葉にする"],
+    match: "同じ精神性を大切にする子丑天中殺の人とは深い信頼関係に。行動派の寅卯天中殺の人は、あなたの夢を形にしてくれる相棒です。",
+  },
+  {
+    name: "申酉", br: [8, 9], months: [8, 9],
+    nature: "いくつものことを同時にこなせる、バランス感覚ばつぐんの人。忙しいほど輝くタイプで、人と人をつなぐ役がぴったり。お金のめぐりにも縁があります。",
+    tip: "申酉天中殺の人は、天中殺中に「手をひろげすぎない」ことがいちばんの開運。やることを半分に絞りましょう。",
+    now: "予定をつめこみすぎていませんか? いまは量より質。大切な人と、大切な仕事だけに力を注ぐと、次の波に楽に乗れます。",
+    ok: ["今ある仕事の品質を上げる", "体のメンテナンス", "貯金・家計の見直し", "昔からの友人と会う"],
+    ng: ["副業をいくつも同時に始める", "衝動的な転職", "見栄のための大きな買い物"],
+    acts: ["予定を1つ減らす", "白い小物を持つ", "財布を整理する", "週に1日なにもしない日", "朝のストレッチ", "感謝のメッセージを送る", "西向きの窓をきれいにする"],
+    match: "ゆったりした戌亥天中殺の人といると心が休まります。午未天中殺の人とは夢を語り合える関係に。",
+  },
+  {
+    name: "午未", br: [6, 7], months: [6, 7],
+    nature: "未来を見すえて進む理想家。若いころに苦労が多いぶん、自分の力で道を切りひらき、年を重ねるほど運が強くなる大器晩成タイプです。",
+    tip: "午未天中殺の人は、2026〜2027年がちょうど天中殺。新しく始めるより「土台づくり」の2年にすると、2028年から一気に伸びます。",
+    now: "2026〜2027年はまさにあなたの天中殺。思いどおりにいかなくても、それは次の12年に向けた準備の合図。焦らず、学びと人間関係の手入れを。",
+    ok: ["スキルの勉強・資格", "住まいや体の手入れ", "昔の夢を掘りおこしてノートにまとめる", "助けてくれた人へのお礼"],
+    ng: ["大きな独立・起業・家の購入", "勢いの告白・結婚の即決", "大きな投資"],
+    acts: ["南向きの場所で朝ごはん", "赤い小物をひとつ", "毎日10分の勉強", "部屋の不用品を月に10個手放す", "目上の人に相談する", "満月の日に目標を書く", "日曜は早く寝る"],
+    match: "現実的な寅卯天中殺の人は、あなたの理想を支えてくれる存在。同じ未来志向の申酉天中殺の人とは一緒に大きなことができます。",
+  },
+  {
+    name: "辰巳", br: [4, 5], months: [4, 5],
+    nature: "ピンチになるほど力を発揮する、波乱に強い人。型破りな発想と行動力で、ふつうの人が選ばない道で成功をつかみます。平穏すぎると逆に運が眠りがち。",
+    tip: "辰巳天中殺の人は、天中殺中に「わざわざ波を立てない」のがコツ。エネルギーは運動や趣味で発散を。",
+    now: "天中殺が明けたばかりで、ここからが上り坂。2025年までに準備したことを、少しずつ形にしていきましょう。",
+    ok: ["スポーツや体を動かす趣味", "旅行・新しい景色", "趣味の範囲の挑戦", "人の相談にのること"],
+    ng: ["ケンカ別れ・衝動的な退職", "ギャンブル的な投資", "無理なダイエット"],
+    acts: ["朝に軽く走る", "緑の観葉植物を置く", "新しい店に入ってみる", "言いたいことは一晩おいて言う", "年上の友人をつくる", "4〜5月は予定を詰めない", "月1で知らない街へ"],
+    match: "穏やかな子丑天中殺の人はあなたの嵐を静める港。刺激がほしいなら同じ辰巳天中殺の人と。",
+  },
+  {
+    name: "寅卯", br: [2, 3], months: [2, 3],
+    nature: "現実をしっかり見て、コツコツ形にできる実務の人。仕事運が強く、信頼を積み重ねて地位を築きます。口より行動で示すタイプ。",
+    tip: "寅卯天中殺の人は、天中殺中に「効率よりも人の気持ち」を大切にすると、周りの助けが集まります。",
+    now: "運気は安定期。いまのうちに実績を積んでおくと、次の天中殺(2034年〜)もあわてずにすみます。",
+    ok: ["今の職場で実績を積む", "資産の分散・つみたて", "健康診断", "家族との時間"],
+    ng: ["効率だけで人を切ること", "焦っての転職", "睡眠をけずる働き方"],
+    acts: ["手帳で時間を管理", "東の窓を開けて深呼吸", "青か緑の服", "週1で自炊をがんばる", "感謝を口に出す", "2〜3月は大きな決断を避ける", "年に一度は長めの休み"],
+    match: "理想家の午未天中殺の人とは、夢と現実をつなぐ最強コンビ。戌亥天中殺の人から新しい視点をもらえます。",
+  },
+  {
+    name: "子丑", br: [0, 1], months: [12, 1],
+    nature: "自分の力で家や道を興す「初代運」の人。まじめで粘り強く、年を重ねるほど信頼と財を築きます。人の上に立つ器の持ち主。",
+    tip: "子丑天中殺の人は、天中殺中に「ひとりで抱えこまない」こと。人に頼るのも実力のうちです。",
+    now: "天中殺はしばらく先。今は攻めどき。やりたかったことは、この数年のうちに形にしておきましょう。",
+    ok: ["人に任せる練習", "年下の育成", "住まいを整える", "家族のルーツを知る"],
+    ng: ["全部を自分でやろうとすること", "無理な拡大", "冬の過労"],
+    acts: ["朝一番に水を飲む", "黒か紺の小物", "北の部屋をきれいに", "12〜1月は体を温める", "年上の人にお礼をする", "月1回の休日の予定なし", "お墓参り・ご先祖への感謝"],
+    match: "辰巳天中殺の人の行動力はあなたの刺激に。戌亥天中殺の人とは言葉がなくても分かりあえます。",
+  },
+];
+
+U.start();
+})();
+</script>
+</body>
+</html>

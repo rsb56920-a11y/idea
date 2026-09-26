@@ -1,0 +1,13 @@
+<!doctype html>
+<html lang="ja"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>合言葉メーカー</title>
+<style>body{font-family:"Yu Gothic","Meiryo",sans-serif;max-width:640px;margin:30px auto;padding:0 16px;line-height:1.8;background:#f7f4ff;color:#2a2440}input,button{font:inherit;padding:10px;border-radius:10px;border:1px solid #bbb;width:100%;box-sizing:border-box;margin:6px 0}button{background:#5b3fa8;color:#fff;border:0;cursor:pointer}code{display:block;background:#2a2440;color:#ffecaa;padding:10px;border-radius:10px;word-break:break-all}</style></head>
+<body><h1>🔑 合言葉メーカー</h1>
+<p>完全版をひらく「合言葉」を決めて、下のボタンを押すと 設定.js に貼る文字(ハッシュ)ができます。<br>合言葉そのものは 設定.js に書かないので、ページを見られても合言葉はわかりません。</p>
+<input id="w" placeholder="合言葉(例: tsuki-2027-kanata)"><button id="b">ハッシュを作る</button>
+<p>↓ これを 設定.js の該当する行の " " の中に貼りつけて保存</p><code id="o">(ここに出ます)</code>
+<p>🛒 購入した人には、合言葉そのもの(上に入れた文字)を、決済完了画面やメールで伝えます。</p>
+<script>
+document.getElementById("b").onclick=async()=>{const w=document.getElementById("w").value.trim();if(!w)return;
+let hex;try{const d=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(w));hex=[...new Uint8Array(d)].map(b=>b.toString(16).padStart(2,"0")).join("")}catch(e){hex="このブラウザでは作れませんでした。Chrome か Edge で開いてください"}
+document.getElementById("o").textContent=hex};
+</script></body></html>
