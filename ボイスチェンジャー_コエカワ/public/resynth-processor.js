@@ -156,6 +156,8 @@ class ResynthProcessor extends AudioWorkletProcessor {
     this.lastVoicedF0 = 0;
     this.lastVoicedAt = -1e9;
     this.rawPrev = 0;
+    this.slope = 0;
+    this.glideComp = this.glideComp ?? 1;
     this.jumpRun = 0;
     this.logMean = 0;
     this.seed = 12345;
@@ -454,11 +456,24 @@ class ResynthProcessor extends AudioWorkletProcessor {
       } else this.jumpRun = 0;
     }
     this.rawPrev = raw;
+    // 高さを調べる窓は少し過去寄り(高い声ほど約3〜8ms)なので、「あ〜↗」のように高さが速く動くと遅れて追いかける。
+    // 直近の高さの動く勢いから、その遅れの分だけ先の高さを見積もる(最大±1半音まで)
+    let fOut = f0;
+    if (f0 && this.lastVoicedF0 && c - this.lastVoicedAt <= this.hop * 1.5) {
+      const sl = Math.log(f0 / this.lastVoicedF0);
+      this.slope = Math.abs(sl) < 0.1 ? this.slope * 0.5 + sl * 0.5 : 0;
+      const lagHops = (this.maxLag - sampleRate / f0) / 2 / this.hop;
+      // 小さな揺れ(1回あたり4セント未満)は雑音のことが多いので補正しない
+      const dz = 0.0023;
+      const sEff = Math.sign(this.slope) * Math.max(0, Math.abs(this.slope) - dz);
+      const ext = Math.max(-0.0578, Math.min(0.0578, sEff * lagHops * this.glideComp));
+      fOut = f0 * Math.exp(ext);
+    } else this.slope = 0;
     if (f0) {
       this.lastVoicedF0 = f0;
       this.lastVoicedAt = c;
     }
-    return { f0, ap: Math.min(1, Math.max(0.02, val * this.apScale)), power };
+    return { f0: fOut, ap: Math.min(1, Math.max(0.02, val * this.apScale)), power };
   }
 
   // True Envelope 法で響きの形(対数)を出し、envCur に入れる

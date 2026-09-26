@@ -35,6 +35,20 @@ for (const [f0, nz, minOk] of [[80, null, 0.95], [100, null, 0.95], [115, null, 
   if (!good) fail++;
   console.log(`${good ? "OK " : "NG "} ${f0}Hz${nz != null ? ` 雑音SN比${nz}dB` : ""}: 正しい ${(r.ok * 100).toFixed(0)}% / 1オクターブ違い ${(r.oct * 100).toFixed(1)}% / 無声 ${(r.unv * 100).toFixed(0)}%`);
 }
+// サイレン: 「あ〜↗↘」と高さを大きく速く上げ下げしても、高さが遅れずについていくか(90→300Hz を0.8秒で往復)
+{
+  const n = Math.floor(SR * 2.4), f = new Float64Array(n);
+  for (let i = 0; i < n; i++) { const u = (i / (SR * 0.8)) % 1; f[i] = 90 * (300 / 90) ** (0.5 - 0.5 * Math.cos(2 * Math.PI * u)); }
+  let s = new Float64Array(n), ph = 0; for (let i = 0; i < n; i++) { ph += f[i] / SR; if (ph >= 1) { ph -= 1; s[i] = 1; } }
+  for (let j = 0; j < 3; j++) s = res(s, VOWELS[0][j], 90 + 30 * j); let m = 0; for (const q of s) m = Math.max(m, Math.abs(q)); for (let i = 0; i < n; i++) s[i] = (s[i] / m) * 0.4;
+  let Proc; globalThis.sampleRate = SR; globalThis.AudioWorkletProcessor = class { constructor() { this.port = {}; } }; globalThis.registerProcessor = (nm, c) => (Proc = c);
+  eval(readFileSync(file, "utf8")); const p = new Proc({ processorOptions: { pitch: 2, formant: 1.2 } });
+  let ok = 0, cnt = 0; const orig = p.step.bind(p);
+  p.step = (c) => { orig(c); if (c < SR * 0.1 || c >= n) return; cnt++; if (p.f0Cur && Math.abs(1200 * Math.log2(p.f0Cur / f[c])) < 50) ok++; };
+  for (let i = 0; i < n; i += 128) { const inp = Float32Array.from(s.subarray(i, i + 128)); p.process([[inp]], [[new Float32Array(inp.length)]]); }
+  const good = ok / cnt >= 0.9; if (!good) fail++;
+  console.log(`${good ? "OK " : "NG "} 速いサイレン(90→300Hz): 正しい ${((100 * ok) / cnt).toFixed(0)}%`);
+}
 // 拍手: 無音の中の拍手が、変換されずにそのままの鋭さで通るか・音割れしないか
 {
   const clap = (amp) => { const n = Math.floor(SR * 0.06), o = new Float64Array(n); let lp = 0; for (let i = 0; i < n; i++) { const t = i / SR; const w = rnd(); lp += 0.35 * (w - lp); o[i] = amp * Math.min(1, t / 0.0015) * Math.exp(-t / 0.008) * (w - lp * 0.5) * 2; } return o; };
