@@ -1,0 +1,16 @@
+{
+  "name": "ココロタイプ | 16タイプ性格診断",
+  "short_name": "ココロタイプ",
+  "description": "16問・約2分でわかる、あなたの本当の性格。",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f6f1ff",
+  "theme_color": "#f6f1ff",
+  "lang": "ja",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
