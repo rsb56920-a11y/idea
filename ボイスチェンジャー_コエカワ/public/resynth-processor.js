@@ -4,7 +4,7 @@
 //   2. 変換後の高さで声帯のパルスを並べ、響き(フォルマントを動かしたもの)を掛けて重ねる
 //   3. 音量は、声(母音)と子音で別々に元の声に合わせる
 // フェーズボコーダ方式(voice-processor.js)と違い、倍音をずらすのではなく作り直すので、
-// 高さが正確で、にごりが出にくい。遅れは約31ms。
+// 高さが正確で、にごりが出にくい。遅れは約28ms。
 
 const N = 2048;
 const HALF = N / 2;
@@ -87,12 +87,14 @@ class ResynthProcessor extends AudioWorkletProcessor {
 
     const sr = sampleRate;
     this.hop = Math.round(sr * 0.005);
-    this.W = Math.round(sr * 0.025); // YIN の積分の長さ
+    this.W = Math.round(sr * (this.yinMs || 20) / 1000); // YIN の積分の長さ(25ms→20ms: 精度はそのままで遅れが約2.5ms短い)
     this.minLag = Math.floor(sr / 500);
-    this.maxLag = Math.ceil(sr / 60);
+    this.maxLag = Math.ceil(sr / (this.minF0 || 60));
     this.M = 1 << Math.ceil(Math.log2(this.W + this.maxLag) + 1);
     // 分析の中心は今より D サンプル前(響きの分析窓の後ろ半分がそろうまで待つ)
-    this.D = Math.max(HALF, Math.ceil((this.W + this.maxLag) / 2)) + this.hop;
+    // (響きの窓は envLen の長さだけ使うので、その半分だけ先があればよい)
+    const envHalf = Math.ceil(Math.min(N, this.envLen || Math.round(sr * 0.0267)) / 2);
+    this.D = Math.max(envHalf, Math.ceil((this.W + this.maxLag) / 2)) + this.hop;
     this.latency = this.D + this.hop; // 全体の遅れ(サンプル)
 
     this.inRing = new Float64Array(RING);
