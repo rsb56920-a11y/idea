@@ -98,6 +98,17 @@ class ResynthProcessor extends AudioWorkletProcessor {
     this.latency = this.D + this.hop; // 全体の遅れ(サンプル)
 
     this.inRing = new Float64Array(RING);
+    // 声の高さを調べるためだけの信号(低音を弱めたもの)。ファン・エアコンなどの低い「ゴー」という雑音に強くなる
+    this.yinRing = new Float64Array(RING);
+    // 帯域: yinHp Hz より下(ゴー音)と yinLp Hz より上(サー音)を弱める(2次のバターワース)
+    this.yinHp = this.yinHp ?? 120;
+    this.yinLp = this.yinLp ?? 1500;
+    const bq = (type, fc) => {
+      const w = (2 * Math.PI * fc) / sampleRate, cs = Math.cos(w), al = Math.sin(w) / Math.SQRT2, a0 = 1 + al;
+      const b0 = type === "hp" ? (1 + cs) / 2 : (1 - cs) / 2, b1 = type === "hp" ? -(1 + cs) : 1 - cs;
+      return { b0: b0 / a0, b1: b1 / a0, b2: b0 / a0, a1: (-2 * cs) / a0, a2: (1 - al) / a0, x1: 0, x2: 0, y1: 0, y2: 0 };
+    };
+    this.yinF = [this.yinHp > 0 ? bq("hp", this.yinHp) : null, this.yinLp > 0 ? bq("lp", this.yinLp) : null].filter(Boolean);
     this.outRing = new Float64Array(RING);
     this.now = 0;
     this.nextPulse = 0;
@@ -144,6 +155,8 @@ class ResynthProcessor extends AudioWorkletProcessor {
     this.apCur = 1;
     this.lastVoicedF0 = 0;
     this.lastVoicedAt = -1e9;
+    this.rawPrev = 0;
+    this.jumpRun = 0;
     this.logMean = 0;
     this.seed = 12345;
     this.flutter = 0;
@@ -174,6 +187,13 @@ class ResynthProcessor extends AudioWorkletProcessor {
     for (let i = 0; i < out.length; i++) {
       const x = input ? input[i] : 0;
       this.inRing[this.now & MASK] = x;
+      let yv = x;
+      for (const f of this.yinF) {
+        const o = f.b0 * yv + f.b1 * f.x1 + f.b2 * f.x2 - f.a1 * f.y1 - f.a2 * f.y2;
+        f.x2 = f.x1; f.x1 = yv; f.y2 = f.y1; f.y1 = o;
+        yv = o;
+      }
+      this.yinRing[this.now & MASK] = yv;
       const oi = (this.now - L) & MASK;
       const wet = this.outRing[oi];
       this.outRing[oi] = 0;
@@ -259,15 +279,21 @@ class ResynthProcessor extends AudioWorkletProcessor {
     const start = c - Math.floor((W + maxLag) / 2);
     let e0 = 0;
     for (let i = 0; i < M; i++) {
-      const v = i < W + maxLag ? this.inRing[(start + i) & MASK] : 0;
+      const v = i < W + maxLag ? this.yinRing[(start + i) & MASK] : 0;
       re[i] = v;
       im[i] = 0;
       re2[i] = i < W ? v : 0;
       im2[i] = 0;
       if (i < W) e0 += v * v;
     }
-    const power = e0 / W;
-    if (power < 1e-8) return { f0: 0, ap: 1, power };
+    // ノイズゲート用の音量は、元の信号で測る
+    let eRaw = 0;
+    for (let i = 0; i < W; i++) {
+      const v = this.inRing[(start + i) & MASK];
+      eRaw += v * v;
+    }
+    const power = eRaw / W;
+    if (e0 / W < 1e-9) return { f0: 0, ap: 1, power };
     this.fftM.transform(re, im, false);
     this.fftM.transform(re2, im2, false);
     for (let k = 0; k < M; k++) {
@@ -284,8 +310,8 @@ class ResynthProcessor extends AudioWorkletProcessor {
     let run = 0;
     d[0] = 1;
     for (let tau = 1; tau <= maxLag; tau++) {
-      const out = this.inRing[(start + tau - 1) & MASK];
-      const inn = this.inRing[(start + tau - 1 + W) & MASK];
+      const out = this.yinRing[(start + tau - 1) & MASK];
+      const inn = this.yinRing[(start + tau - 1 + W) & MASK];
       eTau += inn * inn - out * out;
       const diff = e0 + eTau - (2 * re[tau]) / M;
       run += diff;
@@ -323,12 +349,19 @@ class ResynthProcessor extends AudioWorkletProcessor {
     const nearUsual = !cont && this.logMean && Math.abs(Math.log(f0) - this.logMean) < (5 / 12) * Math.LN2;
     const thresh = cont ? this.voicedThresh + 0.15 : nearUsual ? this.voicedThresh + 0.1 : this.voicedThresh;
     if (!(val < thresh && f0 >= 55 && f0 <= 550)) f0 = 0;
-    // 直前の声と比べて、倍・半分に飛んだものは直す(未来は見られないので過去だけで判断)
+    // 直前の声と比べて、倍・半分に飛んだものは直す(未来は見られないので過去だけで判断)。
+    // ただし同じ高さが3回(15ms)続いたら、読み違えていたのは直前の方なので、補正をやめて今の値を使う
+    // (話し始めの1回を半分に読み違えると、ずっと1オクターブ低いままになるのを防ぐ)
+    const raw = f0;
     if (f0 && this.lastVoicedF0 && c - this.lastVoicedAt < sampleRate * 0.05) {
       const r = f0 / this.lastVoicedF0;
-      if (r > 1.7 && r < 2.3) f0 /= 2;
-      else if (r < 0.59 && r > 0.43) f0 *= 2;
+      const jump = (r > 1.7 && r < 2.3) || (r < 0.59 && r > 0.43);
+      if (jump) {
+        this.jumpRun = this.rawPrev && Math.abs(Math.log2(raw / this.rawPrev)) < 1 / 12 ? this.jumpRun + 1 : 1;
+        if (this.jumpRun < 3) f0 = r > 1 ? f0 / 2 : f0 * 2;
+      } else this.jumpRun = 0;
     }
+    this.rawPrev = raw;
     if (f0) {
       this.lastVoicedF0 = f0;
       this.lastVoicedAt = c;
