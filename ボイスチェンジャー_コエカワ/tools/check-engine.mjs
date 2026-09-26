@@ -60,6 +60,20 @@ for (const [f0, nz, minOk] of [[80, null, 0.95], [100, null, 0.95], [115, null, 
   const good = v / cnt < 0.08; if (!good) fail++;
   console.log(`${good ? "OK " : "NG "} ささやき声: 声と誤判定 ${((100 * v) / cnt).toFixed(1)}%(8%未満で合格)`);
 }
+// 机を叩く音(低い「ドン」)とキーボードの「カチッ」: 無音の中なら元の音そのままで通るか(音程のある音に化けないか)
+{
+  const x = new Float64Array(SR * 2); const ev = [];
+  const knock = () => { const n = Math.floor(SR * 0.12), o = new Float64Array(n); for (let i = 0; i < n; i++) { const t = i / SR; o[i] = 0.5 * Math.exp(-t / 0.025) * (Math.sin(2 * Math.PI * 180 * t) + 0.5 * Math.sin(2 * Math.PI * 420 * t + 1)) + (i < 96 ? rnd() : 0); } return o; };
+  const key = () => { const n = Math.floor(SR * 0.02); let o = Float64Array.from({ length: n }, (_, i) => rnd() * Math.exp(-i / 100)); o = res(o, 4000, 2000); let m = 0; for (const q of o) m = Math.max(m, Math.abs(q)); return o.map((q) => (q / m) * 0.25); };
+  for (const [t, a] of [[0.4, knock()], [0.9, key()], [1.2, key()], [1.5, knock()]]) { const s = Math.floor(t * SR); x.set(a, s); ev.push([s, s + a.length]); }
+  let Proc; globalThis.sampleRate = SR; globalThis.AudioWorkletProcessor = class { constructor() { this.port = {}; } }; globalThis.registerProcessor = (nm, c) => (Proc = c);
+  eval(readFileSync(file, "utf8")); const p = new Proc({ processorOptions: { pitch: 2, formant: 1.2 } });
+  const y = new Float64Array(x.length); for (let i = 0; i < x.length; i += 128) { const inp = Float32Array.from(x.subarray(i, i + 128)); const o = new Float32Array(inp.length); p.process([[inp]], [[o]]); y.set(o, i); }
+  const L = p.latency; let worst = 1;
+  for (const [a, b] of ev) { let xy = 0, xx = 0, yy = 0; for (let i = a; i < b; i++) { xy += x[i] * y[i + L]; xx += x[i] ** 2; yy += y[i + L] ** 2; } worst = Math.min(worst, xy / Math.sqrt(xx * yy + 1e-20)); }
+  const good = worst > 0.95; if (!good) fail++;
+  console.log(`${good ? "OK " : "NG "} 机・キーボードの音: 元の音との一致度(最低) ${worst.toFixed(2)}`);
+}
 // 拍手: 無音の中の拍手が、変換されずにそのままの鋭さで通るか・音割れしないか
 {
   const clap = (amp) => { const n = Math.floor(SR * 0.06), o = new Float64Array(n); let lp = 0; for (let i = 0; i < n; i++) { const t = i / SR; const w = rnd(); lp += 0.35 * (w - lp); o[i] = amp * Math.min(1, t / 0.0015) * Math.exp(-t / 0.008) * (w - lp * 0.5) * 2; } return o; };

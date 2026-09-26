@@ -180,11 +180,14 @@ class ResynthProcessor extends AudioWorkletProcessor {
     this.dryK = new Float32Array(RING);
     // しゃべりながらの拍手用(ごく短いので、声がもれても拍手の音にかくれる)。声の保護では消さない
     this.dryT = new Float32Array(RING);
+    // 机を叩く音など(無音から一瞬で立ち上がり、小さくなり続ける物音)用。声の保護では消さない
+    this.dryN = new Float32Array(RING);
+    this.knock = null;
     this.bgPow = 1e-6; // 直前の背景の音量
     this.lastTransient = -1e9;
     this.cands = [];
     this.tThresh = this.tThresh ?? 10; // 背景より何倍(パワー)大きければ鋭い音とみなすか(10 = 10dB)
-    this.tHf = this.tHf ?? 0.5; // 高い音の多さの条件
+    this.tHf = this.tHf ?? 0.1; // 高い音の多さの条件(0.1 ≒ 2.5kHz より上の成分が主)
     // 音割れ防止(リミッター)
     this.limGain = 1;
   }
@@ -214,9 +217,10 @@ class ResynthProcessor extends AudioWorkletProcessor {
       const wet = this.outRing[oi];
       this.outRing[oi] = 0;
       const dry = this.now >= L ? this.inRing[oi] : 0;
-      const k = Math.max(this.dryK[oi], this.dryT[oi]);
+      const k = Math.max(this.dryK[oi], this.dryT[oi], this.dryN[oi]);
       this.dryK[oi] = 0;
       this.dryT[oi] = 0;
+      this.dryN[oi] = 0;
       const conv = wet * (1 - k) + dry * k;
       out[i] = this.bypass ? dry : conv * this.mix + dry * (1 - this.mix);
       this.now++;
@@ -320,6 +324,21 @@ class ResynthProcessor extends AudioWorkletProcessor {
   detectTransient(a, c) {
     const sr = sampleRate;
     const sub = Math.round(sr * 0.001);
+    // 物音モードの続き: 新しく届いた5msが小さくなり続けていれば元の音を通し続ける。
+    // 大きくなり始めたら(「ぱ」の母音などの声)、背景まで下がったら、0.2秒たったら終わり
+    if (this.knock) {
+      let eh = 0;
+      for (let n = a; n < a + this.hop; n++) eh += this.inRing[n & MASK] ** 2;
+      eh /= this.hop;
+      if (a >= this.knock.end || eh > this.knock.lastE * 1.5 || eh < this.knock.bg * 4) {
+        const r = Math.round(sr * 0.002);
+        for (let i = 0; i < r; i++) this.dryN[(a - r + i) & MASK] *= 1 - (i + 1) / r;
+        this.knock = null;
+      } else {
+        for (let n = a; n < a + this.hop; n++) this.dryN[n & MASK] = 1;
+        this.knock.lastE = eh;
+      }
+    }
     let pw = 0;
     for (let s0 = a; s0 < a + this.hop; s0 += sub) {
       let e = 0, d = 0;
@@ -353,6 +372,19 @@ class ResynthProcessor extends AudioWorkletProcessor {
         let q = 0;
         for (let n = s1; n < s1 + sub; n++) q += this.inRing[n & MASK] ** 2;
         if (q / sub > e1) e1 = q / sub;
+      }
+      // 物音: 無音(背景より30dB以上小さい)から一瞬で立ち上がり、小さくなっていく → 小さくなり続ける間は元の音を通す
+      if (!cd.talking && !this.knock && e1 > cd.bg * 1000 && e2 < e1 * 0.8) {
+        this.nKnock = (this.nKnock || 0) + 1;
+        const fin = Math.round(sr * 0.002);
+        for (let n = cd.s0 - fin; n < newest; n++) {
+          const w = n < cd.s0 ? (n - (cd.s0 - fin)) / fin : 1;
+          if (w > this.dryN[n & MASK]) this.dryN[n & MASK] = w;
+        }
+        let eh = 0;
+        for (let n = newest - this.hop; n < newest; n++) eh += this.inRing[n & MASK] ** 2;
+        this.knock = { end: cd.s0 + Math.round(sr * 0.2), lastE: eh / this.hop, bg: cd.bg };
+        continue;
       }
       // (声などの背景の分は差し引いて比べる)
       if (e2 - cd.bg > (e1 - cd.bg) * 0.25) continue;
