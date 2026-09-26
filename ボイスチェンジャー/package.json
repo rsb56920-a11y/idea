@@ -1,0 +1,11 @@
+{
+  "name": "voice-changer",
+  "version": "0.1.0",
+  "description": "ピッチとフォルマントを別々に動かす自然なボイスチェンジャー",
+  "type": "module",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "license": "MIT"
+}
