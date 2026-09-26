@@ -111,8 +111,12 @@ class ResynthProcessor extends AudioWorkletProcessor {
     // ハン窓はパワーを 3/8 にするので、その分を戻す
     this.zWin = new Float64Array(this.NN);
     for (let i = 0; i < this.NN; i++) this.zWin[i] = (0.5 - 0.5 * Math.cos((2 * Math.PI * (i + 0.5)) / this.NN)) * Math.sqrt(8 / 3);
+    // 響きを調べる窓の長さ(サンプル)。長いほど響きが安定、短いほど音の切れ目(子音→母音)がくっきり
+    this.envLen = this.envLen || Math.round(sampleRate * 0.0267); // 約27ms(48kHz で 1280)
     this.win = new Float64Array(N);
-    for (let i = 0; i < N; i++) this.win[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / N);
+    const EL = Math.min(N, this.envLen);
+    const off = (N - EL) >> 1;
+    for (let i = 0; i < EL; i++) this.win[off + i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * (i + 0.5)) / EL);
     this.re = new Float64Array(N);
     this.im = new Float64Array(N);
     this.nRe = new Float64Array(N);
@@ -339,7 +343,9 @@ class ResynthProcessor extends AudioWorkletProcessor {
       im[i] = 0;
     }
     fft.transform(re, im, false);
-    for (let k = 0; k <= HALF; k++) logA[k] = Math.log(Math.hypot(re[k], im[k]) + 1e-9);
+    // 窓を短くしたぶん、大きさを元の長さの窓と同じにそろえる
+    const wScale = Math.log(N / Math.min(N, this.envLen));
+    for (let k = 0; k <= HALF; k++) logA[k] = Math.log(Math.hypot(re[k], im[k]) + 1e-9) + wScale;
     const L = f0 ? Math.max(24, Math.min(HALF - 1, Math.round((0.5 * sampleRate) / f0))) : Math.max(20, Math.round(sampleRate / 1000));
     // 2回で十分(4回と比べて品質は同じ、計算は約2割少ない)
     for (let iter = 0; iter < 2; iter++) {
