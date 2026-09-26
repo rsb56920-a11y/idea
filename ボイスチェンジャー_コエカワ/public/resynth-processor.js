@@ -340,7 +340,10 @@ class ResynthProcessor extends AudioWorkletProcessor {
       }
     }
     let pw = 0;
-    for (let s0 = a; s0 < a + this.hop; s0 += sub) {
+    // (44.1kHz では 5ms が 1ms の倍数にならないので、はみ出す端の塊は読まない。まだ届いていない音を読んでしまう)
+    let nb = 0;
+    for (let s0 = a; s0 + sub <= a + this.hop; s0 += sub) {
+      nb++;
       let e = 0, d = 0;
       for (let n = s0; n < s0 + sub; n++) {
         const v = this.inRing[n & MASK];
@@ -357,7 +360,7 @@ class ResynthProcessor extends AudioWorkletProcessor {
       }
       pw += e;
     }
-    pw /= this.hop / sub;
+    pw /= nb;
     // 候補の確認: 6〜12ms後の音量が、始まりの1msの 1/4(-6dB)より小さければ拍手・物音(声の出だしはむしろ大きくなる)
     const newest = a + this.hop;
     while (this.cands.length && this.cands[0].s0 + Math.round(sr * 0.012) <= newest) {

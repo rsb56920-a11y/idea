@@ -14,7 +14,7 @@ const PRESETS = [
   { id: "girl", e: "🎀", name: "女の子", desc: "明るくかわいい10〜20代の声", target: 250, formant: 1.2, range: 3.0, breath: 0.35, soft: 3, bright: 3, lowcut: 180 },
   { id: "sister", e: "💄", name: "お姉さん", desc: "落ち着いた大人の女性の声", target: 205, formant: 1.14, range: 2.6, breath: 0.3, soft: 2.5, bright: 2, lowcut: 150 },
   { id: "boy", e: "✨", name: "美少年", desc: "澄んだ中性的な少年の声", target: 175, formant: 1.1, range: 2.4, breath: 0.2, soft: 1.5, bright: 2, lowcut: 130 },
-  { id: "ryosei", e: "🌗", name: "両声類(中性)", desc: "男女どちらにも聞こえる声", target: 160, formant: 1.07, range: 2.6, breath: 0.2, soft: 1.5, bright: 1, lowcut: 110 },
+  { id: "ryosei", e: "🌗", name: "両声類", desc: "男性が出す、女声に聞こえる声", target: 215, formant: 1.15, range: 2.8, breath: 0.3, soft: 3, bright: 2, lowcut: 150 },
   { id: "shota", e: "🧢", name: "ショタ", desc: "元気な小学生くらいの男の子", target: 260, formant: 1.24, range: 3.2, breath: 0.25, soft: 3, bright: 3, lowcut: 180 },
   { id: "ikevo", e: "🎩", name: "低音イケボ", desc: "今より低く太い大人の男性の声", target: 0.85, formant: 0.94, range: 2.0, breath: 0.05, soft: 0, bright: -1, lowcut: 50, relative: true },
 ];
