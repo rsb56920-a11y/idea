@@ -11,12 +11,12 @@ const asset = (name) => window.__KOEKAWA_ASSETS?.[name] || `./${name}`;
 //   target: 変換後の声の高さ(Hz)  formant: 平均的な男性の声から見た響きの倍率
 //   range: その声らしい抑揚の幅(半音の標準偏差)  breath: 息っぽさ
 const PRESETS = [
-  { id: "girl", e: "🎀", name: "女の子", desc: "明るくかわいい10〜20代の声", target: 250, formant: 1.22, range: 3.4, breath: 0.35, soft: 3, bright: 3, lowcut: 180 },
-  { id: "sister", e: "💄", name: "お姉さん", desc: "落ち着いた大人の女性の声", target: 210, formant: 1.17, range: 3.0, breath: 0.3, soft: 2.5, bright: 2, lowcut: 150 },
-  { id: "boy", e: "✨", name: "美少年", desc: "澄んだ中性的な少年の声", target: 190, formant: 1.12, range: 2.4, breath: 0.2, soft: 1.5, bright: 2, lowcut: 130 },
-  { id: "ryosei", e: "🌗", name: "両声類", desc: "男性が出す、女声に聞こえる声", target: 220, formant: 1.17, range: 3.0, breath: 0.3, soft: 3, bright: 2, lowcut: 150 },
-  { id: "shota", e: "🧢", name: "ショタ", desc: "元気な小学生くらいの男の子", target: 260, formant: 1.24, range: 3.2, breath: 0.25, soft: 3, bright: 3, lowcut: 180 },
-  { id: "ikevo", e: "🎩", name: "低音イケボ", desc: "今より低く太い大人の男性の声", target: 0.85, formant: 0.94, range: 2.0, breath: 0.05, soft: 0, bright: -1, lowcut: 50, relative: true },
+  { id: "girl", e: "🎀", name: "女の子", desc: "明るくかわいい10〜20代の声", target: 250, formant: 1.22, range: 3.4, breath: 0.15, soft: 3, bright: -4, presence: 6, lowcut: 180 },
+  { id: "sister", e: "💄", name: "お姉さん", desc: "落ち着いた大人の女性の声", target: 210, formant: 1.17, range: 3.0, breath: 0.15, soft: 2.5, bright: -4, presence: 5, lowcut: 150 },
+  { id: "boy", e: "✨", name: "美少年", desc: "澄んだ中性的な少年の声", target: 190, formant: 1.12, range: 2.4, breath: 0.1, soft: 1.5, bright: -2, presence: 4, lowcut: 130 },
+  { id: "ryosei", e: "🌗", name: "両声類", desc: "男性が出す、女声に聞こえる声", target: 220, formant: 1.17, range: 3.0, breath: 0.1, soft: 3, bright: -4, presence: 6, lowcut: 150 },
+  { id: "shota", e: "🧢", name: "ショタ", desc: "元気な小学生くらいの男の子", target: 260, formant: 1.24, range: 3.2, breath: 0.15, soft: 3, bright: -3, presence: 5, lowcut: 180 },
+  { id: "ikevo", e: "🎩", name: "低音イケボ", desc: "今より低く太い大人の男性の声", target: 0.85, formant: 0.94, range: 2.0, breath: 0.05, soft: 0, bright: -1, presence: 0, lowcut: 50, relative: true },
 ];
 // 見た目: プリセットごとのカードの色(色相)
 const HUES = { girl: 330, sister: 290, boy: 190, ryosei: 260, shota: 30, ikevo: 220 };
@@ -39,6 +39,7 @@ const state = {
   pitch: 0,
   formant: 1,
   bright: 0,
+  presence: 0, // 女声の張り(2kHz 付近の強さ dB)
   lowcut: 80,
   breath: 0,
   inton: 1,
@@ -49,7 +50,7 @@ const state = {
   mine: saved.mine || [], // マイ設定 [{ name, pitch, formant, ... }]
   rtEngine: saved.rtEngine || "resynth", // リアルタイムの方式: resynth(作り直し・おすすめ) / light(軽量)
 };
-const CUSTOM_KEYS = ["pitch", "formant", "bright", "lowcut", "breath", "inton", "soft"];
+const CUSTOM_KEYS = ["pitch", "formant", "bright", "presence", "lowcut", "breath", "inton", "soft"];
 const persist = () => {
   try {
     localStorage.setItem(
@@ -177,6 +178,7 @@ function applyPreset(id) {
   state.breath = p.breath;
   state.soft = p.soft;
   state.bright = p.bright;
+  state.presence = p.presence ?? 0;
   state.lowcut = p.lowcut;
   persist();
   renderControls();
@@ -271,6 +273,7 @@ function renderControls() {
   $("#pitch").value = state.pitch;
   $("#formant").value = state.formant;
   $("#bright").value = state.bright;
+  $("#presence").value = state.presence;
   $("#lowcut").value = state.lowcut;
   $("#breath").value = state.breath;
   $("#soft").value = state.soft;
@@ -283,13 +286,14 @@ function renderControls() {
   $("#pitchVal").textContent = `${state.pitch > 0 ? "+" : ""}${state.pitch} 半音(約 ${after}Hz に)`;
   $("#formantVal").textContent = `${state.formant.toFixed(2)} 倍`;
   $("#brightVal").textContent = `${state.bright > 0 ? "+" : ""}${state.bright} dB`;
+  $("#presenceVal").textContent = `${state.presence > 0 ? "+" : ""}${state.presence} dB`;
   $("#lowcutVal").textContent = `${state.lowcut} Hz 以下`;
   $("#breathVal").textContent = `${Math.round(state.breath * 100)}%`;
   $("#softVal").textContent = `+${state.soft} dB`;
   $("#intonVal").textContent = `${state.inton.toFixed(2)} 倍`;
 }
 
-for (const id of ["pitch", "formant", "bright", "lowcut", "breath", "inton", "soft"]) {
+for (const id of ["pitch", "formant", "bright", "presence", "lowcut", "breath", "inton", "soft"]) {
   $(`#${id}`).addEventListener("input", (e) => {
     state[id] = Number(e.target.value);
     state.preset = "custom";
@@ -347,8 +351,10 @@ function buildChain(ctx, source) {
   const vc = new AudioWorkletNode(ctx, name, { processorOptions: vcParams() });
   const hp = new BiquadFilterNode(ctx, { type: "highpass", frequency: state.lowcut, Q: 0.7 });
   const shelf = new BiquadFilterNode(ctx, { type: "highshelf", frequency: 3500, gain: state.bright });
-  source.connect(vc).connect(hp).connect(shelf);
-  return { vc, hp, shelf, out: shelf };
+  // 女声の張り: 2kHz 付近。AIで女声にした同じ声と比べると、ここが足りず4kHzより上(息のシャー音)が多すぎた
+  const pres = new BiquadFilterNode(ctx, { type: "peaking", frequency: 2000, Q: 0.8, gain: state.presence });
+  source.connect(vc).connect(hp).connect(shelf).connect(pres);
+  return { vc, hp, shelf, pres, out: pres };
 }
 
 let live = null; // リアルタイム変換中の音の流れ
@@ -358,6 +364,7 @@ function pushParams() {
   live.vc.port.postMessage(vcParams());
   live.hp.frequency.value = state.lowcut;
   live.shelf.gain.value = state.bright;
+  live.pres.gain.value = state.presence;
 }
 
 // ---------- 3a. リアルタイム ----------
@@ -688,7 +695,8 @@ async function renderOffline(buf, onProgress = () => {}, engine = $("#engine").v
     // 高品質エンジンの後ろには、低音カットと明るさだけを掛ける
     const hp = new BiquadFilterNode(ctx, { type: "highpass", frequency: state.lowcut, Q: 0.7 });
     const shelf = new BiquadFilterNode(ctx, { type: "highshelf", frequency: 3500, gain: state.bright });
-    src.connect(hp).connect(shelf).connect(ctx.destination);
+    const pres = new BiquadFilterNode(ctx, { type: "peaking", frequency: 2000, Q: 0.8, gain: state.presence });
+    src.connect(hp).connect(shelf).connect(pres).connect(ctx.destination);
   } else {
     await loadEngines(ctx);
     buildChain(ctx, src).out.connect(ctx.destination);
@@ -760,6 +768,7 @@ if ((state.preset === "custom" || state.preset.startsWith("mine:")) && saved.cus
   Object.assign(state, saved.custom);
   state.breath ??= 0;
   state.soft ??= 0;
+  state.presence ??= 0;
   state.inton ??= 1;
   renderControls();
 } else {
