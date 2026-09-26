@@ -49,6 +49,17 @@ for (const [f0, nz, minOk] of [[80, null, 0.95], [100, null, 0.95], [115, null, 
   const good = ok / cnt >= 0.9; if (!good) fail++;
   console.log(`${good ? "OK " : "NG "} 速いサイレン(90→300Hz): 正しい ${((100 * ok) / cnt).toFixed(0)}%`);
 }
+// ささやき声: 息だけの声を「声」と誤判定して、ブッという声が混ざらないか
+{
+  const n = Math.floor(SR * 1.5); let w = Float64Array.from({ length: n }, rnd);
+  w = res(res(res(w, 700, 130), 1200, 150), 2600, 200); let m = 0; for (const q of w) m = Math.max(m, Math.abs(q)); for (let i = 0; i < n; i++) w[i] = (w[i] / m) * 0.25;
+  let Proc; globalThis.sampleRate = SR; globalThis.AudioWorkletProcessor = class { constructor() { this.port = {}; } }; globalThis.registerProcessor = (nm, c) => (Proc = c);
+  eval(readFileSync(file, "utf8")); const p = new Proc({ processorOptions: { pitch: 2, formant: 1.2 } });
+  let v = 0, cnt = 0; const orig = p.step.bind(p); p.step = (c) => { orig(c); if (c < SR * 0.1 || c > n - SR * 0.1) return; cnt++; if (p.f0Cur) v++; };
+  for (let i = 0; i < n; i += 128) { const inp = Float32Array.from(w.subarray(i, i + 128)); p.process([[inp]], [[new Float32Array(inp.length)]]); }
+  const good = v / cnt < 0.08; if (!good) fail++;
+  console.log(`${good ? "OK " : "NG "} ささやき声: 声と誤判定 ${((100 * v) / cnt).toFixed(1)}%(8%未満で合格)`);
+}
 // 拍手: 無音の中の拍手が、変換されずにそのままの鋭さで通るか・音割れしないか
 {
   const clap = (amp) => { const n = Math.floor(SR * 0.06), o = new Float64Array(n); let lp = 0; for (let i = 0; i < n; i++) { const t = i / SR; const w = rnd(); lp += 0.35 * (w - lp); o[i] = amp * Math.min(1, t / 0.0015) * Math.exp(-t / 0.008) * (w - lp * 0.5) * 2; } return o; };

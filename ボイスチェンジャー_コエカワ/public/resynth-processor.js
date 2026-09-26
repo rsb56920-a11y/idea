@@ -76,6 +76,7 @@ class ResynthProcessor extends AudioWorkletProcessor {
     this.baseF0 = 0;
     this.bypass = false;
     this.mix = 1;
+    this.twoPeriod = 0.6; // 2周期先の揃い具合の基準(小さいほど厳しい)
     this.voicedThresh = 0.35; // YIN の値がこれより小さければ声(有声)
     this.apScale = 0.3; // 息(非周期成分)の見積もりの強さ
     this.hiNoise = 0.1; // 3kHz より上に足す息の割合
@@ -157,6 +158,7 @@ class ResynthProcessor extends AudioWorkletProcessor {
     this.lastVoicedAt = -1e9;
     this.rawPrev = 0;
     this.slope = 0;
+    this.glide = 0;
     this.glideComp = this.glideComp ?? 1;
     this.jumpRun = 0;
     this.logMean = 0;
@@ -434,6 +436,13 @@ class ResynthProcessor extends AudioWorkletProcessor {
       if (den !== 0) t = best + (0.5 * (a - cc)) / den;
     }
     let f0 = sampleRate / t;
+    // ぎりぎりの判定(0.35以上)のときは、2周期先も揃っているか確かめる。ささやき声などの息の音は、
+    // 口の響きのせいで1周期だけ「声っぽく」見えても、2周期先では崩れる(本物の声は揃ったまま)
+    // (「あ〜↗」のように高さが速く動いている最中は、2周期先がずれるのが当たり前なので確かめない)
+    if (val >= 0.35 && 2 * best + 1 <= maxLag && this.glide < 0.005) {
+      const d2 = Math.min(d[2 * best - 1], d[2 * best], d[2 * best + 1]);
+      if (d2 > this.twoPeriod) f0 = 0;
+    }
     // 声の続き: 直前(30ms以内)まで声で、高さもほぼ同じ(±2半音)なら、少しゆるい基準でも声とみなす。
     // 母音の途中で YIN の値が一瞬ゆれて「無声」になると、声の中に雑音がブツッと混ざってガサついて聞こえるため
     const cont =
@@ -462,13 +471,17 @@ class ResynthProcessor extends AudioWorkletProcessor {
     if (f0 && this.lastVoicedF0 && c - this.lastVoicedAt <= this.hop * 1.5) {
       const sl = Math.log(f0 / this.lastVoicedF0);
       this.slope = Math.abs(sl) < 0.1 ? this.slope * 0.5 + sl * 0.5 : 0;
+      this.glide = Math.max(Math.abs(this.slope), this.glide * 0.8);
       const lagHops = (this.maxLag - sampleRate / f0) / 2 / this.hop;
       // 小さな揺れ(1回あたり4セント未満)は雑音のことが多いので補正しない
       const dz = 0.0023;
       const sEff = Math.sign(this.slope) * Math.max(0, Math.abs(this.slope) - dz);
       const ext = Math.max(-0.0578, Math.min(0.0578, sEff * lagHops * this.glideComp));
       fOut = f0 * Math.exp(ext);
-    } else this.slope = 0;
+    } else {
+      this.slope = 0;
+      this.glide *= 0.8; // 高さが動いていた記録は、声が途切れても少しずつ減らす(一気に消すと無声が連鎖する)
+    }
     if (f0) {
       this.lastVoicedF0 = f0;
       this.lastVoicedAt = c;
