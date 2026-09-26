@@ -27,4 +27,4 @@ http
       res.writeHead(404).end("not found");
     }
   })
-  .listen(PORT, () => console.log(`ボイスチェンジャー: http://localhost:${PORT}`));
+  .listen(PORT, () => console.log(`コエカワ: http://localhost:${PORT}`));

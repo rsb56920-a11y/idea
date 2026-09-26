@@ -4,6 +4,9 @@
 //   あなた専用の設定: voice-analysis.js(声の高さ・抑揚の幅・声道の長さを測る)
 import { detectF0, profileVoice } from "./voice-analysis.js";
 
+// 部品ファイルの場所。1ファイル版(コエカワ.html)では、中に埋め込んだ部品を使う
+const asset = (name) => window.__KOEKAWA_ASSETS?.[name] || `./${name}`;
+
 // なりたい声のプリセット。
 //   target: 変換後の声の高さ(Hz)  formant: 平均的な男性の声から見た響きの倍率
 //   range: その声らしい抑揚の幅(半音の標準偏差)  breath: 息っぽさ
@@ -87,7 +90,7 @@ async function measure() {
     return toast("マイクを使えません。ブラウザのマイク許可を確認してください");
   }
   const ctx = new AudioContext();
-  await ctx.audioWorklet.addModule("./capture-processor.js");
+  await ctx.audioWorklet.addModule(asset("capture-processor.js"));
   const src = ctx.createMediaStreamSource(stream);
   const an = ctx.createAnalyser();
   an.fftSize = 2048;
@@ -307,7 +310,7 @@ async function startLive() {
     return toast("マイクを使えません。ブラウザのマイク許可を確認してください");
   }
   const ctx = new AudioContext({ latencyHint: "interactive" });
-  await ctx.audioWorklet.addModule("./voice-processor.js");
+  await ctx.audioWorklet.addModule(asset("voice-processor.js"));
   const chain = buildChain(ctx, ctx.createMediaStreamSource(stream));
   const recDest = ctx.createMediaStreamDestination();
   chain.out.connect(ctx.destination);
@@ -468,7 +471,7 @@ $("#convertBoth").onclick = () => convertWith(["rt", "hq"], $("#convertBoth"), "
 // 高品質エンジンを別スレッドで動かす
 function runHQ(mono, sr, onProgress) {
   return new Promise((resolve, reject) => {
-    const w = new Worker("./hq-worker.js", { type: "module" });
+    const w = new Worker(asset("hq-worker.js"), window.__KOEKAWA_ASSETS ? undefined : { type: "module" });
     w.onmessage = (e) => {
       if (e.data.progress != null) onProgress(e.data.progress);
       if (e.data.done) {
@@ -507,7 +510,7 @@ async function renderOffline(buf, onProgress = () => {}, engine = $("#engine").v
     const shelf = new BiquadFilterNode(ctx, { type: "highshelf", frequency: 3500, gain: state.bright });
     src.connect(hp).connect(shelf).connect(ctx.destination);
   } else {
-    await ctx.audioWorklet.addModule("./voice-processor.js");
+    await ctx.audioWorklet.addModule(asset("voice-processor.js"));
     buildChain(ctx, src).out.connect(ctx.destination);
   }
   src.start();

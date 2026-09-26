@@ -1,0 +1,992 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#101418" />
+  <title>コエカワ | ナチュラルボイスチェンジャー</title>
+  <style>
+:root {
+  --bg: #101418;
+  --card: #1a2027;
+  --line: #2a323c;
+  --text: #eef2f6;
+  --muted: #95a1ae;
+  --accent: #22d3ee;
+  --accent-2: #a78bfa;
+  --grad: linear-gradient(135deg, #22d3ee, #a78bfa);
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", sans-serif; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+#app { max-width: 720px; margin: 0 auto; padding: 16px 16px 48px; }
+header h1 { font-size: 24px; margin: 16px 0 6px; }
+.muted { color: var(--muted); font-size: 14px; line-height: 1.7; }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 20px; margin-top: 16px; }
+.card h2 { font-size: 18px; margin: 0 0 10px; display: flex; align-items: center; gap: 10px; }
+.num { background: var(--grad); color: #0b0f14; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-size: 15px; font-weight: 800; flex-shrink: 0; }
+.row { display: flex; gap: 10px; align-items: center; }
+.row.wrap { flex-wrap: wrap; }
+.btn { background: #252d36; border: 1px solid var(--line); border-radius: 12px; padding: 11px 16px; font-weight: 700; display: inline-flex; align-items: center; gap: 6px; }
+.btn:disabled { opacity: 0.4; cursor: default; }
+.btn.main { background: var(--grad); color: #0b0f14; border: 0; }
+.btn.on { outline: 2px solid var(--accent); }
+.btn.rec-on { background: #7f1d1d; border-color: #ef4444; }
+.meter { flex: 1; height: 10px; background: #252d36; border-radius: 999px; overflow: hidden; }
+.meter div { height: 100%; width: 0; background: var(--grad); transition: width 0.1s; }
+.big { font-size: 18px; font-weight: 700; margin: 12px 0 0; }
+.presets { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+.preset { text-align: left; background: #20272f; border: 2px solid var(--line); border-radius: 14px; padding: 12px; }
+.preset.active { border-color: var(--accent); background: #16303a; }
+.preset .e { font-size: 26px; }
+.preset b { display: block; margin: 4px 0 2px; }
+.preset small { color: var(--muted); font-size: 12px; line-height: 1.5; display: block; }
+.adjust { margin-top: 16px; }
+.adjust summary { cursor: pointer; font-weight: 700; margin-bottom: 10px; }
+.adjust label { display: block; font-size: 14px; margin: 12px 0; }
+.adjust b { color: var(--accent); margin-left: 6px; }
+input[type="range"] { width: 100%; accent-color: #22d3ee; margin-top: 6px; }
+.hint { color: var(--muted); font-size: 12px; line-height: 1.7; }
+.tabs { display: flex; gap: 6px; margin-bottom: 14px; }
+.tab { flex: 1; background: #20272f; border: 1px solid var(--line); border-radius: 10px; padding: 10px; font-weight: 700; }
+.tab.active { background: #16303a; border-color: var(--accent); }
+.warn { background: #3a2a10; color: #fcd34d; border-radius: 10px; padding: 10px 12px; font-size: 13px; line-height: 1.6; }
+.inline { display: flex; align-items: center; gap: 8px; margin-top: 12px; font-size: 14px; }
+.inline select { background: #20272f; border: 1px solid var(--line); border-radius: 8px; padding: 6px; max-width: 100%; }
+.file { cursor: pointer; }
+.clip { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-top: 10px; background: #20272f; border-radius: 12px; padding: 10px; }
+.clip audio { flex: 1; min-width: 220px; }
+.clip a { color: var(--accent); font-size: 14px; }
+.tips ul { padding-left: 1.2em; line-height: 1.9; font-size: 14px; margin: 0; }
+.footer { text-align: center; margin-top: 24px; font-size: 12px; }
+#toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-size: 13px; opacity: 0; pointer-events: none; transition: 0.2s; }
+#toast.show { opacity: 1; transform: translateX(-50%); }
+.prof { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 4px; }
+.prof div { background: #20272f; border-radius: 12px; padding: 10px; text-align: center; }
+.prof small { display: block; color: var(--muted); font-size: 11px; font-weight: 400; }
+.prof b { display: block; font-size: 20px; color: var(--accent); margin: 2px 0; }
+.prof span { font-size: 11px; color: var(--muted); font-weight: 400; }
+.check { display: flex !important; align-items: center; gap: 8px; }
+.adjust select { background: #20272f; border: 1px solid var(--line); border-radius: 8px; padding: 6px; margin-top: 6px; display: block; }
+.obs { margin-top: 14px; background: #20272f; border-radius: 12px; padding: 12px 14px; }
+.obs summary { cursor: pointer; font-weight: 700; }
+.obs ol { padding-left: 1.3em; line-height: 1.9; font-size: 14px; }
+.mine-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; align-items: center; }
+.mine { display: inline-flex; border: 2px solid var(--line); border-radius: 999px; overflow: hidden; background: #20272f; }
+.mine.active { border-color: var(--accent); background: #16303a; }
+.mine button { background: none; border: 0; padding: 7px 12px; font-size: 13px; font-weight: 700; }
+.mine .del { padding: 7px 10px 7px 4px; color: var(--muted); }
+.btn.small { padding: 7px 12px; font-size: 13px; }
+header h1 small { font-size: 13px; color: var(--muted); font-weight: 400; margin-left: 6px; }
+
+</style>
+</head>
+<body>
+  <main id="app">
+    <header>
+      <h1>🎙️ コエカワ <small>ナチュラルボイスチェンジャー</small></h1>
+      <p class="muted">声の高さと響きを別々に動かして、自然な女声・少年声・両声類ボイスに。すべてこのパソコンの中で処理します(音声はどこにも送信しません)。</p>
+    </header>
+
+    <section class="card" id="step1">
+      <h2><span class="num">1</span>あなたの声を測る(あなた専用の設定を作る)</h2>
+      <p class="muted">ボタンを押したら、ふだんの声で「こんにちは、今日はいい天気ですね。明日はどこに行こうかな」と読んでください(約6秒)。声の高さ・抑揚の幅・声道の長さを測って、あなたの声に合わせた変換量を計算します。</p>
+      <div class="row">
+        <button class="btn" id="measure">🎤 測定する</button>
+        <div class="meter"><div id="measureBar"></div></div>
+      </div>
+      <p class="muted" id="liveF0"></p>
+      <div class="big" id="myF0">未測定(男性の平均 110Hz として計算します)</div>
+    </section>
+
+    <section class="card">
+      <h2><span class="num">2</span>なりたい声を選ぶ</h2>
+      <div class="presets" id="presets"></div>
+      <div class="mine-row" id="mine"></div>
+      <details class="adjust" open>
+        <summary>細かく調整する</summary>
+        <label>声の高さ(ピッチ) <b id="pitchVal"></b>
+          <input type="range" id="pitch" min="-12" max="20" step="0.5" /></label>
+        <label>声の響き(フォルマント) <b id="formantVal"></b>
+          <input type="range" id="formant" min="0.8" max="1.4" step="0.01" /></label>
+        <label>明るさ(高音の強さ) <b id="brightVal"></b>
+          <input type="range" id="bright" min="-4" max="10" step="1" /></label>
+        <label>低音カット <b id="lowcutVal"></b>
+          <input type="range" id="lowcut" min="40" max="300" step="10" /></label>
+        <label>息っぽさ <b id="breathVal"></b>
+          <input type="range" id="breath" min="0" max="1" step="0.05" /></label>
+        <label>やわらかさ(第1倍音の強さ・女性の声の特徴) <b id="softVal"></b>
+          <input type="range" id="soft" min="0" max="6" step="0.5" /></label>
+        <label>抑揚(声の上がり下がりの大きさ) <b id="intonVal"></b>
+          <input type="range" id="inton" min="0.8" max="1.6" step="0.05" /></label>
+        <label>ノイズゲート(話していない時の雑音を消す)
+          <select id="gate">
+            <option value="-120">オフ</option>
+            <option value="-60">弱め</option>
+            <option value="-55">ふつう</option>
+            <option value="-45">強め(雑音が多い部屋)</option>
+          </select></label>
+        <label class="check"><input type="checkbox" id="keepConsonants" /> 子音(さ行・た行などの息の音)は高さを変えない(おすすめ)</label>
+        <p class="hint">プリセットを選ぶと、測ったあなたの声に合わせて全部の値が自動で決まります。目安:響きを上げすぎると子どもっぽく、下げると大人っぽく・太くなります。女声は「変換後の高さ 200〜260Hz、響き 1.15〜1.22」あたりが自然です(地声が低い人ほど半音の数は大きくなります)。</p>
+      </details>
+    </section>
+
+    <section class="card">
+      <h2><span class="num">3</span>話してみる</h2>
+      <div class="tabs">
+        <button class="tab active" data-tab="live">リアルタイム(マイク)</button>
+        <button class="tab" data-tab="file">録音・ファイルを変換</button>
+      </div>
+
+      <div class="pane" id="pane-live">
+        <p class="warn">⚠️ <b>必ずヘッドホン・イヤホン</b>をつけてください。スピーカーだと声がループして「キーン」と鳴ります。</p>
+        <div class="row wrap">
+          <button class="btn main" id="liveStart">▶ 変換スタート</button>
+          <button class="btn" id="compare" disabled>🔁 元の声と聞きくらべ</button>
+          <button class="btn" id="rec" disabled>⏺ 録音</button>
+        </div>
+        <label class="inline" id="sinkWrap" hidden>変換した声の出力先
+          <select id="sink"></select></label>
+        <label class="inline" id="monWrap" hidden><input type="checkbox" id="monitor" /> 自分の声をヘッドホンで聞く(モニター)
+          <select id="monSink"></select></label>
+        <details class="obs">
+          <summary>🎥 Twitch・OBS・Discord で使う</summary>
+          <ol>
+            <li>仮想オーディオケーブル <b>VB-CABLE</b>(無料)をインストールして、パソコンを再起動</li>
+            <li>このアプリの「変換した声の出力先」を <b>CABLE Input</b> にする</li>
+            <li>自分の声を聞きたいときは「モニター」にチェックして、出力先を<b>ヘッドホン</b>にする</li>
+            <li>OBS:「音声入力キャプチャ」を追加 → デバイスを <b>CABLE Output</b> にする。<b>元のマイクは OBS でミュート</b>(地声が混ざるため)</li>
+            <li>Discord:設定 → 音声 → 入力デバイスを <b>CABLE Output</b>。Discord 側のノイズ抑制は<b>オフ</b>がおすすめ(声が不自然になりやすい)</li>
+            <li>配信中はこのタブを閉じない(別のタブに切り替えるのは大丈夫)</li>
+          </ol>
+          <p class="hint">遅れは約0.05〜0.1秒です。口の動き(アバター)と少しずれる場合は、OBS の「音声の詳細プロパティ」で映像側を同期オフセットで遅らせると合います。</p>
+        </details>
+        <div id="recs"></div>
+      </div>
+
+      <div class="pane" id="pane-file" hidden>
+        <p class="muted">先に録音してから変換すると、何度でも設定を変えて試せます。</p>
+        <div class="row wrap">
+          <button class="btn" id="rawRec">⏺ 地声を録音する</button>
+          <label class="btn file">📂 音声ファイルを選ぶ<input type="file" id="file" accept="audio/*" hidden /></label>
+        </div>
+        <p class="muted" id="fileName"></p>
+        <label class="inline">変換の方式
+          <select id="engine">
+            <option value="hq">高品質(声を作り直す・おすすめ)</option>
+            <option value="rt">リアルタイムと同じ方式</option>
+          </select></label>
+        <p class="hint">高品質は、声の高さを前後も見て正確に調べ、声を1から作り直します。少し時間がかかりますが、濁りや響きのにじみが出にくくなります。聞きくらべて自然な方を選んでください。</p>
+        <div class="row wrap">
+          <button class="btn main" id="convert" disabled>✨ 今の設定で変換</button>
+          <button class="btn" id="convertBoth" disabled>🎧 両方の方式で変換して聞きくらべ</button>
+        </div>
+        <div id="fileOut"></div>
+      </div>
+    </section>
+
+    <section class="card tips">
+      <h2>💡 もっと自然に聞こえるコツ</h2>
+      <p class="muted">ボイスチェンジャーは「声の材料」を変えるだけで、話し方はあなたのままです。話し方を少し変えると、自然さが大きく上がります。</p>
+      <ul>
+        <li><b>女の子・お姉さん:</b>語尾を少し上げる/文の最後をやわらかく伸ばす/息を少し多めに混ぜる/口角を上げて話す</li>
+        <li><b>美少年:</b>声を張りすぎず、落ち着いたテンポで。語尾を短く切ると少年らしくなる</li>
+        <li><b>共通:</b>地声の段階で少しだけ高め・明るめに話すと、変換量が少なくて済み、機械っぽさが減る</li>
+        <li><b>避けたいこと:</b>咳ばらい・低いうなり声・大声は不自然になりやすい</li>
+        <li><b>マイク:</b>口から10〜15cm。部屋の反響が少ないほど自然(カーテンのある部屋がおすすめ)</li>
+      </ul>
+    </section>
+
+    <p class="footer muted">ほかの人になりすましてだましたり、迷惑をかけたりする使い方はしないでください。</p>
+  </main>
+  <div id="toast" role="status"></div>
+  <script>
+window.__KOEKAWA_ASSETS = {};
+window.__KOEKAWA_ASSETS["voice-processor.js"] = 'data:text/javascript;charset=utf-8,' + encodeURIComponent("// 声の高さ(ピッチ)と声の響き(フォルマント)を別々に動かす AudioWorklet。\n//\n// しくみ(1フレームごと):\n//   1. 音を短く切ってFFTで周波数ごとに分ける\n//   2. ケプストラムで「声の響きの形(スペクトル包絡)」を取り出す\n//   3. 倍音の山(ピーク)を見つける\n//   4. 山ごとにまわりのビンをまとめてピッチ倍率ぶんずらし、位相を山ごとに回して周波数を変える\n//      (Laroche & Dolson の位相ロック方式。ビン単位でずらすより濁りが少ない)\n//      このとき元の響き(包絡)を外し、フォルマント倍率で伸ばした響きを掛け直す\n//   5. 逆FFTで音に戻して重ね合わせる\n// ピッチだけ上げると「ヘリウム声」になるのは、2 の響きまで一緒に伸びるから。\n// ここでは響きの伸び方を別に決められるので、女声・少年声が自然になりやすい。\n//\n// リアルタイム(マイク)とファイル変換(OfflineAudioContext)の両方で同じ処理を使う。\n\nconst N = 2048; // FFTの長さ(48kHzで約43ms。低い男声でも2〜3周期入る)\nconst OSAMP = 4; // 重ね合わせの多さ\nconst HOP = N / OSAMP;\nconst HALF = N / 2;\n\nclass FFT {\n  constructor(n) {\n    this.n = n;\n    this.rev = new Uint32Array(n);\n    const bits = Math.log2(n);\n    for (let i = 0; i < n; i++) {\n      let r = 0;\n      for (let b = 0; b < bits; b++) r |= ((i >> b) & 1) << (bits - 1 - b);\n      this.rev[i] = r;\n    }\n    this.cos = new Float64Array(n / 2);\n    this.sin = new Float64Array(n / 2);\n    for (let i = 0; i < n / 2; i++) {\n      this.cos[i] = Math.cos((2 * Math.PI * i) / n);\n      this.sin[i] = Math.sin((2 * Math.PI * i) / n);\n    }\n  }\n  // 正規化なし。inverse=false で e^{-i}、true で e^{+i}\n  transform(re, im, inverse) {\n    const n = this.n;\n    for (let i = 0; i < n; i++) {\n      const j = this.rev[i];\n      if (j > i) {\n        let t = re[i];\n        re[i] = re[j];\n        re[j] = t;\n        t = im[i];\n        im[i] = im[j];\n        im[j] = t;\n      }\n    }\n    const s = inverse ? 1 : -1;\n    for (let size = 2; size <= n; size <<= 1) {\n      const half = size >> 1;\n      const step = n / size;\n      for (let i = 0; i < n; i += size) {\n        for (let k = 0; k < half; k++) {\n          const wr = this.cos[k * step];\n          const wi = s * this.sin[k * step];\n          const a = i + k;\n          const b = a + half;\n          const tr = re[b] * wr - im[b] * wi;\n          const ti = re[b] * wi + im[b] * wr;\n          re[b] = re[a] - tr;\n          im[b] = im[a] - ti;\n          re[a] += tr;\n          im[a] += ti;\n        }\n      }\n    }\n  }\n}\n\nclass VoiceProcessor extends AudioWorkletProcessor {\n  constructor(options) {\n    super();\n    this.pitch = 1;\n    this.formant = 1;\n    this.mix = 1; // 1 = 変換後の声だけ\n    this.bypass = false;\n    this.breath = 0; // 息っぽさ 0〜1\n    this.inton = 1; // 抑揚の強さ(1 = そのまま、1.2 = 上がり下がりを2割大きく)\n    this.gateDb = -120; // これより小さい音は消す(ノイズゲート)\n    this.baseF0 = 0; // 測定したふだんの声の高さ(抑揚の中心)\n    this.keepConsonants = true; // 子音(息の音)は高さを変えない\n    this.fastOnset = true; // 声の始まりをすぐに判定する\n    this.splitBand = true; // 2.5kHz 未満はいつも声の高さで動かす\n    this.voicedGain = true; // 音量合わせは声の部分だけで行う\n    this.soft = 0; // やわらかさ(dB): 声の一番低い倍音(第1倍音)を強める。女性の声の特徴\n    // 変換後の音量を元の声に合わせる(倍音の数が減ると小さく聞こえるため)\n    this.gain = 1;\n    this.gainState = [\n      { inPow: 1e-6, outPow: 1e-6, gain: 1 }, // 子音・無声\n      { inPow: 1e-6, outPow: 1e-6, gain: 1 }, // 声\n    ];\n    // ファイル変換では最初から設定を渡す(メッセージは届くのが遅れることがあるため)\n    Object.assign(this, options?.processorOptions);\n    this.port.onmessage = (e) => Object.assign(this, e.data);\n\n    this.fft = new FFT(N);\n    this.win = new Float64Array(N);\n    for (let i = 0; i < N; i++) this.win[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / N);\n\n    this.inFIFO = new Float64Array(N);\n    this.outFIFO = new Float64Array(N);\n    this.outAccum = new Float64Array(2 * N);\n    this.rover = N - HOP;\n    this.lastPhase = new Float64Array(HALF + 1);\n\n    this.re = new Float64Array(N);\n    this.im = new Float64Array(N);\n    this.cRe = new Float64Array(N);\n    this.cIm = new Float64Array(N);\n    this.anaMag = new Float64Array(HALF + 1);\n    this.anaFreq = new Float64Array(HALF + 1);\n    this.env = new Float64Array(HALF + 1);\n    this.outRe = new Float64Array(HALF + 1);\n    this.outIm = new Float64Array(HALF + 1);\n    this.peaks = new Int32Array(HALF);\n    this.newTheta = new Float64Array(HALF);\n    this.prevPeaks = new Int32Array(HALF);\n    this.prevTheta = new Float64Array(HALF);\n    this.prevCount = 0;\n    this.ac = new Float64Array(N);\n    this.logA = new Float64Array(HALF + 1);\n    // 窓の自己相関(自己相関を窓の形で割って偏りをなくすため)\n    this.wac = new Float64Array(N);\n    for (let l = 0; l < N; l++) {\n      let s = 0;\n      for (let i = 0; i + l < N; i++) s += this.win[i] * this.win[i + l];\n      this.wac[l] = s;\n    }\n    this.voicing = 0; // 有声(声帯が振動している)らしさ 0〜1\n    this.logMean = 0; // 声の高さの平均(対数)\n    this.gateGain = 1;\n    // 息の音(子音)のときに、ケプストラムで残す係数の数。小さいほど包絡がなめらか\n    this.lifter = Math.max(20, Math.round(sampleRate / 1000));\n    // ノイズゲートが閉じている間は音量合わせを止めるための印\n    this.gateOpen = true;\n  }\n\n  process(inputs, outputs) {\n    const input = inputs[0]?.[0];\n    const output = outputs[0];\n    if (!output?.[0]) return true;\n    const out = output[0];\n    if (!input) {\n      out.fill(0);\n    } else if (this.bypass) {\n      out.set(input);\n    } else {\n      for (let i = 0; i < input.length; i++) {\n        this.inFIFO[this.rover] = input[i];\n        const dry = this.inFIFO[this.rover - (N - HOP)] ?? 0;\n        let wet = this.outFIFO[this.rover - (N - HOP)];\n        // 約0.3秒の平均パワーで音量を元の声に合わせる。無音時は上げすぎない\n        // 声(母音)と子音で倍率を分ける(1つだと、声を戻す倍率で子音まで大きくなる)\n        const a = 1 / (0.3 * sampleRate);\n        const v = this.voicing > 0.5 ? 1 : 0;\n        const st = this.voicedGain ? this.gainState[v] : this.gainState[1];\n        st.inPow += (dry * dry - st.inPow) * a;\n        st.outPow += (wet * wet - st.outPow) * a;\n        const target =\n          st.inPow > 1e-7 && this.gateOpen ? Math.min(4, Math.max(0.25, Math.sqrt(st.inPow / (st.outPow + 1e-12)))) : st.gain;\n        st.gain += (target - st.gain) * a * 4;\n        // 切り替わりでぷつっとしないよう、使う倍率はなめらかに移す\n        const g = this.voicedGain ? this.gainState[1].gain * this.voicing + this.gainState[0].gain * (1 - this.voicing) : st.gain;\n        this.gain += (g - this.gain) * 0.01;\n        wet *= this.gain;\n        out[i] = wet * this.mix + dry * (1 - this.mix);\n        this.rover++;\n        if (this.rover >= N) {\n          this.rover = N - HOP;\n          this.frame();\n        }\n      }\n    }\n    for (let c = 1; c < output.length; c++) output[c].set(out);\n    return true;\n  }\n\n  // 分析済みの re/im(窓をかけた入力のFFT)から、声の高さ・はっきりさ・音の強さを出す\n  analyzePitch() {\n    const { re, im, ac, wac, fft } = this;\n    const aRe = this.cRe;\n    const aIm = this.cIm;\n    for (let k = 0; k < N; k++) {\n      aRe[k] = re[k] * re[k] + im[k] * im[k];\n      aIm[k] = 0;\n    }\n    fft.transform(aRe, aIm, true);\n    for (let l = 0; l < N; l++) ac[l] = aRe[l] / N / wac[l];\n    const power = ac[0];\n    if (power <= 0) return { f0: 0, clarity: 0, power: 0 };\n    const minLag = Math.floor(sampleRate / 500);\n    const maxLag = Math.min(HALF - 1, Math.floor(sampleRate / 60));\n    let mx = 0;\n    for (let l = minLag; l <= maxLag; l++) if (ac[l] > mx) mx = ac[l];\n    // 最大値の9割を超える最初の山 = 本当の周期(倍の周期を拾わないため)\n    for (let l = minLag + 1; l < maxLag; l++) {\n      if (ac[l] > 0.9 * mx && ac[l] >= ac[l - 1] && ac[l] >= ac[l + 1]) {\n        const a = ac[l - 1];\n        const b = ac[l];\n        const c = ac[l + 1];\n        const shift = (a - c) / (2 * (a - 2 * b + c) || 1);\n        return { f0: sampleRate / (l + shift), clarity: b / power, power };\n      }\n    }\n    return { f0: 0, clarity: 0, power };\n  }\n\n  frame() {\n    const { re, im, cRe, cIm, win, fft, anaMag, anaFreq, env } = this;\n    const freqPerBin = sampleRate / N;\n    const expct = (2 * Math.PI * HOP) / N;\n\n    // 1. 分析: FFT と、位相の進み方から各ビンの本当の周波数を出す\n    for (let k = 0; k < N; k++) {\n      re[k] = this.inFIFO[k] * win[k];\n      im[k] = 0;\n    }\n    fft.transform(re, im, false);\n    let maxMag = 0;\n    for (let k = 0; k <= HALF; k++) {\n      const mag = Math.hypot(re[k], im[k]);\n      const phase = Math.atan2(im[k], re[k]);\n      let d = phase - this.lastPhase[k] - k * expct;\n      this.lastPhase[k] = phase;\n      d -= 2 * Math.PI * Math.round(d / (2 * Math.PI));\n      anaMag[k] = mag;\n      anaFreq[k] = (k + (OSAMP * d) / (2 * Math.PI)) * freqPerBin;\n      if (mag > maxMag) maxMag = mag;\n    }\n\n    // 1b. 声の高さと「声か息か」を自己相関で調べる(パワースペクトルの逆FFT = 自己相関)\n    const { f0, clarity, power } = this.analyzePitch();\n    const voiced = clarity > 0.5 && power > 1e-7;\n    // 声が始まったらすぐに「声」と判断する(遅れると、音節の頭で高さが遅れて上がる「しゃくり」が出る)\n    this.voicing = voiced && this.fastOnset ? 1 : this.voicing + ((voiced ? 1 : 0) - this.voicing) * 0.5;\n    if (voiced) {\n      const lf = Math.log(f0);\n      if (!this.logMean) this.logMean = this.baseF0 ? Math.log(this.baseF0) : lf;\n      this.logMean += (lf - this.logMean) * 0.01;\n    }\n\n    // 1c. ノイズゲート(話していない時の雑音を消す)\n    const db = 10 * Math.log10(power + 1e-20);\n    const gateTarget = db > this.gateDb ? 1 : 0.03;\n    this.gateGain += (gateTarget - this.gateGain) * (gateTarget > this.gateGain ? 0.7 : 0.2);\n    this.gateOpen = this.gateGain > 0.5;\n\n    // 2. スペクトル包絡(True Envelope 法: ケプストラムでなめらかにしては山に合わせて持ち上げる、を繰り返す)\n    //    ただのケプストラムだと倍音と倍音の谷に引っぱられて包絡が低く・ぼやけるので、響きがこもる\n    //    なめらかさは声の高さに合わせる(周期の半分まで)。低い声ほど細かく響きを拾える\n    //    (合成音での評価: 固定48だと倍音のずれ 4.1dB → 声に合わせると 1.0dB)\n    const L = voiced ? Math.max(24, Math.min(HALF - 1, Math.round((0.5 * sampleRate) / f0))) : this.lifter;\n    const logA = this.logA;\n    for (let k = 0; k <= HALF; k++) logA[k] = Math.log(anaMag[k] + 1e-9);\n    for (let iter = 0; iter < 4; iter++) {\n      for (let k = 0; k <= HALF; k++) {\n        cRe[k] = logA[k];\n        cIm[k] = 0;\n      }\n      for (let k = HALF + 1; k < N; k++) {\n        cRe[k] = cRe[N - k];\n        cIm[k] = 0;\n      }\n      fft.transform(cRe, cIm, true);\n      for (let k = 0; k < N; k++) {\n        const keep = k < L || k > N - L;\n        cRe[k] = keep ? cRe[k] / N : 0;\n        cIm[k] = keep ? cIm[k] / N : 0;\n      }\n      fft.transform(cRe, cIm, false);\n      if (iter < 3) for (let k = 0; k <= HALF; k++) logA[k] = Math.max(logA[k], cRe[k]);\n    }\n    for (let k = 0; k <= HALF; k++) env[k] = Math.exp(cRe[k]);\n\n    // 3. 倍音の山(ピーク)を探す\n    const peaks = this.peaks;\n    let np = 0;\n    const floor = maxMag * 1e-4;\n    for (let k = 2; k <= HALF - 2; k++) {\n      const m = anaMag[k];\n      if (m > floor && m > anaMag[k - 1] && m >= anaMag[k + 1] && m > anaMag[k - 2] && m >= anaMag[k + 2]) peaks[np++] = k;\n    }\n\n    // 4. 山ごとに「山のまわりのビン全部」をまとめてずらす(位相の関係を保つので濁りにくい)\n    //    ずらした先で、響きの形(包絡)をフォルマント倍率で伸ばしたものに掛け替える\n    const outRe = this.outRe;\n    const outIm = this.outIm;\n    outRe.fill(0);\n    outIm.fill(0);\n    // 声の部分だけ高さを変える。子音(息の音)は元の高さのまま、響きだけ変える\n    let pv = this.pitch;\n    if (voiced && this.inton !== 1 && this.logMean) {\n      pv *= Math.exp((this.inton - 1) * (Math.log(f0) - this.logMean));\n      pv = Math.min(this.pitch * 1.5, Math.max(this.pitch / 1.5, pv));\n    }\n    const pc = this.keepConsonants ? 1 + (pv - 1) * this.voicing : pv;\n    const f = this.formant;\n    const warped = (k) => {\n      const src = k / f;\n      const i0 = Math.floor(src);\n      return i0 >= HALF ? env[HALF] * 0.1 : env[i0] + (env[i0 + 1] - env[i0]) * (src - i0);\n    };\n    const newTheta = this.newTheta;\n    for (let i = 0; i < np; i++) {\n      const kp = peaks[i];\n      // 山の範囲: となりの山との中間まで。ただし窓の主な山の幅(±3ビン)を超えない\n      //   (広く取ると、0Hz付近の残りかすや別の倍音のすそまで回転させてしまい、ありもしない音が出る)\n      const lo = Math.max(2, kp - 3, i === 0 ? 0 : Math.ceil((peaks[i - 1] + kp) / 2));\n      const hi = Math.min(kp + 3, i === np - 1 ? HALF : Math.floor((kp + peaks[i + 1]) / 2));\n      const fp = anaFreq[kp];\n      // 声の倍音がある低い音域(2.5kHz 未満)はいつも声の高さで動かし、子音の雑音が多い高い音域だけ判定に従う\n      const p = this.splitBand && fp < 2500 ? pv : pc;\n      const shift = Math.round((fp * p) / freqPerBin - kp);\n      // 前のフレームで一番近かった山の回転を引き継ぎ、周波数の変化分だけ回す\n      let prevTheta = 0;\n      let bestDist = 4;\n      for (let j = 0; j < this.prevCount; j++) {\n        const dist = Math.abs(this.prevPeaks[j] - kp);\n        if (dist < bestDist) {\n          bestDist = dist;\n          prevTheta = this.prevTheta[j];\n        }\n      }\n      let theta = prevTheta + (2 * Math.PI * (fp * p - fp) * HOP) / sampleRate;\n      theta -= 2 * Math.PI * Math.round(theta / (2 * Math.PI));\n      newTheta[i] = theta;\n      // 響きの掛け替えは山ごとに1つの倍率で(ビンごとに変えると山の形がくずれ、すその雑音が増える)\n      const tp = kp + shift;\n      if (tp < 1 || tp > HALF) continue;\n      let g = warped(tp) / env[kp];\n      // やわらかさ: 変換後の第1倍音(基本周波数)の山だけを持ち上げる\n      if (this.soft && voiced && Math.abs(fp * p - f0 * p) < f0 * p * 0.3) g *= Math.pow(10, (this.soft * this.voicing) / 20);\n      const c = Math.cos(theta) * g;\n      const sn = Math.sin(theta) * g;\n      for (let k = lo; k <= hi; k++) {\n        const t = k + shift;\n        if (t < 0 || t > HALF) continue;\n        outRe[t] += re[k] * c - im[k] * sn;\n        outIm[t] += re[k] * sn + im[k] * c;\n      }\n    }\n    // 息っぽさ: 声の部分に、響きの形に沿った息の音(1.2kHz より上)を足す\n    if (this.breath > 0 && this.voicing > 0.1) {\n      const amt = this.breath * this.voicing * 0.12;\n      for (let k = 0; k <= HALF; k++) {\n        const hz = k * freqPerBin;\n        if (hz < 1200) continue;\n        const ramp = Math.min(1, (hz - 1200) / 1800);\n        const m = amt * ramp * warped(k);\n        const ph = Math.random() * 2 * Math.PI;\n        outRe[k] += m * Math.cos(ph);\n        outIm[k] += m * Math.sin(ph);\n      }\n    }\n    if (this.gateGain < 0.999) {\n      for (let k = 0; k <= HALF; k++) {\n        outRe[k] *= this.gateGain;\n        outIm[k] *= this.gateGain;\n      }\n    }\n\n    this.prevPeaks.set(peaks.subarray(0, np));\n    this.prevTheta.set(newTheta.subarray(0, np));\n    this.prevCount = np;\n\n    // 5. 音に戻して重ね合わせる\n    for (let k = 0; k <= HALF; k++) {\n      re[k] = outRe[k];\n      im[k] = outIm[k];\n    }\n    for (let k = HALF + 1; k < N; k++) {\n      re[k] = 0;\n      im[k] = 0;\n    }\n    fft.transform(re, im, true);\n    // 片側スペクトルなので実部を2倍/N。ハン窓を2回かけて4重に重ねると1.5倍になるので割る\n    for (let k = 0; k < N; k++) this.outAccum[k] += (win[k] * 2 * re[k]) / N / 1.5;\n    for (let k = 0; k < HOP; k++) this.outFIFO[k] = this.outAccum[k];\n    this.outAccum.copyWithin(0, HOP);\n    this.outAccum.fill(0, 2 * N - HOP);\n    for (let k = 0; k < N - HOP; k++) this.inFIFO[k] = this.inFIFO[k + HOP];\n  }\n}\n\nregisterProcessor(\"voice-processor\", VoiceProcessor);\n");
+window.__KOEKAWA_ASSETS["capture-processor.js"] = 'data:text/javascript;charset=utf-8,' + encodeURIComponent("// 測定用に、マイクの音を圧縮せずにそのまま受け取る(録音ファイルにすると音質が変わり、響きの測定がずれるため)\nclass CaptureProcessor extends AudioWorkletProcessor {\n  process(inputs) {\n    const ch = inputs[0]?.[0];\n    if (ch) this.port.postMessage(ch.slice(0));\n    return true;\n  }\n}\nregisterProcessor(\"capture-processor\", CaptureProcessor);\n");
+window.__KOEKAWA_ASSETS["hq-worker.js"] = URL.createObjectURL(new Blob(["// 高品質エンジン(録音・ファイル専用)。声を「高さ」「響き」「息」に分けて、声を作り直す。\n// 音声合成でよく使われる WORLD と同じ考え方(ソース・フィルタ方式)を簡単にしたもの:\n//   1. 声の高さを10msごとに YIN 法で調べる(前後も見て、飛びを直す)\n//   2. 響きの形(スペクトル包絡)を True Envelope 法で取り出す\n//   3. 変換後の高さで「声帯のパルス」を並べ直し、1つ1つのパルスに\n//      フォルマントを動かした響き(最小位相=実際の声に近い位相)を掛けて重ねる\n//   4. 息・子音は雑音に響きを掛けて作る\n// リアルタイム版(voice-processor.js)より時間はかかるが、濁りや響きのにじみが出にくい。\n\nconst N = 2048;\nconst HALF = N / 2;\nconst HOP_SEC = 0.01;\n\nclass FFT {\n  constructor(n) {\n    this.n = n;\n    this.rev = new Uint32Array(n);\n    const bits = Math.log2(n);\n    for (let i = 0; i < n; i++) {\n      let r = 0;\n      for (let b = 0; b < bits; b++) r |= ((i >> b) & 1) << (bits - 1 - b);\n      this.rev[i] = r;\n    }\n    this.cos = new Float64Array(n / 2);\n    this.sin = new Float64Array(n / 2);\n    for (let i = 0; i < n / 2; i++) {\n      this.cos[i] = Math.cos((2 * Math.PI * i) / n);\n      this.sin[i] = Math.sin((2 * Math.PI * i) / n);\n    }\n  }\n  transform(re, im, inverse) {\n    const n = this.n;\n    for (let i = 0; i < n; i++) {\n      const j = this.rev[i];\n      if (j > i) {\n        let t = re[i];\n        re[i] = re[j];\n        re[j] = t;\n        t = im[i];\n        im[i] = im[j];\n        im[j] = t;\n      }\n    }\n    const s = inverse ? 1 : -1;\n    for (let size = 2; size <= n; size <<= 1) {\n      const half = size >> 1;\n      const step = n / size;\n      for (let i = 0; i < n; i += size) {\n        for (let k = 0; k < half; k++) {\n          const wr = this.cos[k * step];\n          const wi = s * this.sin[k * step];\n          const a = i + k;\n          const b = a + half;\n          const tr = re[b] * wr - im[b] * wi;\n          const ti = re[b] * wi + im[b] * wr;\n          re[b] = re[a] - tr;\n          im[b] = im[a] - ti;\n          re[a] += tr;\n          im[a] += ti;\n        }\n      }\n    }\n  }\n}\n\n// ---------- 1. 声の高さ(YIN法) ----------\nfunction trackPitch(x, sr, hop, voicedThresh = 0.35, apScale = 1.5) {\n  const W = Math.round(sr * 0.025); // 積分する長さ\n  const minLag = Math.floor(sr / 500);\n  const maxLag = Math.ceil(sr / 60);\n  const M = 1 << Math.ceil(Math.log2(W + maxLag) + 1);\n  const fft = new FFT(M);\n  const re = new Float64Array(M);\n  const im = new Float64Array(M);\n  const re2 = new Float64Array(M);\n  const im2 = new Float64Array(M);\n  const frames = Math.ceil(x.length / hop);\n  const f0 = new Float64Array(frames);\n  const ap = new Float64Array(frames); // 周期性のなさ(0=きれいな声、1=雑音)\n  const pow = new Float64Array(frames);\n  const d = new Float64Array(maxLag + 1);\n  // 2乗の累積和(差分関数のエネルギー項に使う)\n  const cs = new Float64Array(x.length + 1);\n  for (let i = 0; i < x.length; i++) cs[i + 1] = cs[i] + x[i] * x[i];\n  const seg = (a, b) => cs[Math.min(x.length, Math.max(0, b))] - cs[Math.min(x.length, Math.max(0, a))];\n\n  for (let fr = 0; fr < frames; fr++) {\n    const start = fr * hop - Math.floor((W + maxLag) / 2);\n    // 相互相関 r(τ) = Σ x[t]·x[t+τ] (t は W 区間) を FFT で求める\n    for (let i = 0; i < M; i++) {\n      const j = start + i;\n      const v = j >= 0 && j < x.length ? x[j] : 0;\n      re[i] = i < W + maxLag ? v : 0;\n      im[i] = 0;\n      re2[i] = i < W ? v : 0;\n      im2[i] = 0;\n    }\n    fft.transform(re, im, false);\n    fft.transform(re2, im2, false);\n    for (let k = 0; k < M; k++) {\n      // conj(A)·B\n      const a = re2[k];\n      const b = -im2[k];\n      const c = re[k];\n      const e = im[k];\n      const pr = a * c - b * e;\n      const pi = a * e + b * c;\n      re[k] = pr;\n      im[k] = pi;\n    }\n    fft.transform(re, im, true);\n    const e0 = seg(start, start + W);\n    pow[fr] = e0 / W;\n    let run = 0;\n    let best = -1;\n    let bestVal = 1;\n    d[0] = 1;\n    for (let tau = 1; tau <= maxLag; tau++) {\n      const r = re[tau] / M;\n      const diff = e0 + seg(start + tau, start + tau + W) - 2 * r;\n      run += diff;\n      d[tau] = run > 0 ? (diff * tau) / run : 1;\n    }\n    for (let tau = minLag; tau <= maxLag; tau++) {\n      if (d[tau] < 0.15) {\n        while (tau + 1 <= maxLag && d[tau + 1] < d[tau]) tau++;\n        best = tau;\n        break;\n      }\n      if (d[tau] < bestVal) {\n        bestVal = d[tau];\n        best = tau;\n      }\n    }\n    const val = d[best];\n    // 放物線で小数点以下の周期を出す\n    let t = best;\n    if (best > minLag && best < maxLag) {\n      const a = d[best - 1];\n      const b = d[best];\n      const c = d[best + 1];\n      const den = a - 2 * b + c;\n      if (den !== 0) t = best + (0.5 * (a - c)) / den;\n    }\n    const fHz = sr / t;\n    // 範囲外の値(放物線補間の失敗など)は無声あつかい\n    f0[fr] = val < voicedThresh && pow[fr] > 1e-6 && fHz >= 55 && fHz <= 550 ? fHz : 0;\n    ap[fr] = Math.min(1, Math.max(0.02, val * apScale));\n  }\n\n  // 後処理: 前後と比べて飛んでいる値(倍・半分の間違い)を直し、短すぎる有声区間は無声にする\n  const out = Float64Array.from(f0);\n  for (let i = 0; i < frames; i++) {\n    if (!f0[i]) continue;\n    const near = [];\n    for (let j = i - 3; j <= i + 3; j++) if (j >= 0 && j < frames && f0[j]) near.push(f0[j]);\n    near.sort((a, b) => a - b);\n    const med = near[near.length >> 1];\n    if (f0[i] > med * 1.6 || f0[i] < med / 1.6) out[i] = med;\n  }\n  for (let i = 0; i < frames; ) {\n    if (!out[i]) {\n      i++;\n      continue;\n    }\n    let j = i;\n    while (j < frames && out[j]) j++;\n    if (j - i < 3) for (let k = i; k < j; k++) out[k] = 0;\n    i = j;\n  }\n  // 1フレームだけの無声のすき間は埋める\n  for (let i = 1; i < frames - 1; i++) if (!out[i] && out[i - 1] && out[i + 1]) out[i] = (out[i - 1] + out[i + 1]) / 2;\n  return { f0: out, ap, pow };\n}\n\n// ---------- 2. 響きの形(True Envelope) ----------\nfunction envelopes(x, sr, hop, f0) {\n  const fft = new FFT(N);\n  const win = new Float64Array(N);\n  for (let i = 0; i < N; i++) win[i] = 0.5 - 0.5 * Math.cos((2 * Math.PI * i) / N);\n  const frames = f0.length;\n  const env = new Float32Array(frames * (HALF + 1)); // 対数(自然対数)で持つ\n  const re = new Float64Array(N);\n  const im = new Float64Array(N);\n  const logA = new Float64Array(HALF + 1);\n  for (let fr = 0; fr < frames; fr++) {\n    const c = fr * hop - HALF;\n    for (let i = 0; i < N; i++) {\n      const j = c + i;\n      re[i] = j >= 0 && j < x.length ? x[j] * win[i] : 0;\n      im[i] = 0;\n    }\n    fft.transform(re, im, false);\n    for (let k = 0; k <= HALF; k++) logA[k] = Math.log(Math.hypot(re[k], im[k]) + 1e-9);\n    const L = f0[fr] ? Math.max(24, Math.min(HALF - 1, Math.round((0.5 * sr) / f0[fr]))) : Math.max(20, Math.round(sr / 1000));\n    for (let iter = 0; iter < 4; iter++) {\n      for (let k = 0; k <= HALF; k++) {\n        re[k] = logA[k];\n        im[k] = 0;\n      }\n      for (let k = HALF + 1; k < N; k++) {\n        re[k] = re[N - k];\n        im[k] = 0;\n      }\n      fft.transform(re, im, true);\n      for (let k = 0; k < N; k++) {\n        const keep = k < L || k > N - L;\n        re[k] = keep ? re[k] / N : 0;\n        im[k] = keep ? im[k] / N : 0;\n      }\n      fft.transform(re, im, false);\n      if (iter < 3) for (let k = 0; k <= HALF; k++) logA[k] = Math.max(logA[k], re[k]);\n    }\n    env.set(re.subarray(0, HALF + 1), fr * (HALF + 1));\n  }\n  return env;\n}\n\n// ---------- 3. 合成 ----------\nfunction convertHQ(input, sr, opts = {}) {\n  const pitch = opts.pitch ?? 1;\n  const formant = opts.formant ?? 1;\n  const inton = opts.inton ?? 1;\n  const breath = opts.breath ?? 0;\n  const soft = opts.soft ?? 0; // やわらかさ(dB): 第1倍音を強める\n  const onProgress = opts.onProgress || (() => {});\n  const x = Float64Array.from(input);\n  const hop = Math.round(sr * HOP_SEC);\n\n  const { f0, ap, pow } = trackPitch(x, sr, hop, opts.voicedThresh ?? 0.35, opts.apScale ?? 0.3);\n  // 高い音域(3kHz〜)に足す息の割合。元の声と同じはっきりさになるよう、日本語の読み上げ音声で合わせた値\n  const hiNoise = opts.hiNoise ?? 0.1;\n  onProgress(0.25);\n  const env = envelopes(x, sr, hop, f0);\n  onProgress(0.5);\n  const frames = f0.length;\n  const binHz = sr / N;\n\n  // 抑揚の中心(ふだんの高さ)\n  let logSum = 0;\n  let cnt = 0;\n  for (const v of f0) if (v) (logSum += Math.log(v)), cnt++;\n  const logMean = opts.baseF0 ? Math.log(opts.baseF0) : cnt ? logSum / cnt : Math.log(120);\n\n  const fft = new FFT(N);\n  const out = new Float64Array(x.length + N);\n  const re = new Float64Array(N);\n  const im = new Float64Array(N);\n  const nRe = new Float64Array(N);\n  const nIm = new Float64Array(N);\n  const logEnvW = new Float64Array(HALF + 1);\n  const logP = new Float64Array(HALF + 1);\n  const logN = new Float64Array(HALF + 1);\n  const pRe = new Float64Array(HALF + 1);\n  const pIm = new Float64Array(HALF + 1);\n  const aRe = new Float64Array(HALF + 1);\n  const aIm = new Float64Array(HALF + 1);\n  const WSUM = N / 2; // ハン窓の和\n  const WSQ = (3 * N) / 8; // ハン窓の2乗の和\n\n  // 対数振幅から最小位相のスペクトルを作る(ケプストラムを片側に折りたたむ)\n  const minPhase = (logMag, outRe, outIm) => {\n    for (let k = 0; k <= HALF; k++) {\n      re[k] = logMag[k];\n      im[k] = 0;\n    }\n    for (let k = HALF + 1; k < N; k++) {\n      re[k] = re[N - k];\n      im[k] = 0;\n    }\n    fft.transform(re, im, true);\n    for (let n = 0; n < N; n++) {\n      const c = re[n] / N;\n      re[n] = n === 0 || n === HALF ? c : n < HALF ? 2 * c : 0;\n      im[n] = 0;\n    }\n    fft.transform(re, im, false);\n    for (let k = 0; k <= HALF; k++) {\n      const m = Math.exp(re[k]);\n      outRe[k] = m * Math.cos(im[k]);\n      outIm[k] = m * Math.sin(im[k]);\n    }\n  };\n\n  // 入力の時刻 t(サンプル)での値をフレーム間で直線補間\n  const frameAt = (t) => {\n    const f = Math.min(frames - 1, Math.max(0, t / hop));\n    const i0 = Math.floor(f);\n    return { i0, i1: Math.min(frames - 1, i0 + 1), w: f - i0 };\n  };\n  const f0At = (t) => {\n    const { i0, i1, w } = frameAt(t);\n    const a = f0[i0];\n    const b = f0[i1];\n    if (a && b) return Math.exp(Math.log(a) * (1 - w) + Math.log(b) * w);\n    return w < 0.5 ? a : b;\n  };\n\n  let t = 0;\n  let noiseState = 12345;\n  const rand = () => {\n    noiseState = (noiseState * 1103515245 + 12345) & 0x7fffffff;\n    return noiseState / 0x7fffffff - 0.5;\n  };\n  let lastReport = 0;\n  while (t < x.length) {\n    const fin = f0At(t);\n    const voiced = fin > 0;\n    let fout = 0;\n    if (voiced) {\n      fout = fin * pitch * Math.exp((inton - 1) * (Math.log(fin) - logMean));\n      fout = Math.min(1000, Math.max(40, fout));\n    }\n    // 次のパルスまでの間隔(無声のときは5msおき)\n    const T = voiced ? sr / fout : sr * 0.005;\n    const { i0, i1, w } = frameAt(t);\n\n    // 響きをフォルマント倍率で伸ばし、息(非周期成分)の割合を決める\n    const apBase = voiced ? ap[i0] * (1 - w) + ap[i1] * w : 1;\n    for (let k = 0; k <= HALF; k++) {\n      const src = k / formant;\n      const j0 = Math.min(HALF - 1, Math.floor(src));\n      const fw = Math.min(1, src - j0);\n      const e0 = env[i0 * (HALF + 1) + j0] * (1 - fw) + env[i0 * (HALF + 1) + j0 + 1] * fw;\n      const e1 = env[i1 * (HALF + 1) + j0] * (1 - fw) + env[i1 * (HALF + 1) + j0 + 1] * fw;\n      let le = e0 * (1 - w) + e1 * w;\n      if (src > HALF) le -= 3; // 範囲外は小さく\n      logEnvW[k] = le;\n      const hz = k * binHz;\n      // 高い周波数ほど息の成分が多い。息っぽさの設定でさらに足す\n      const hi = Math.min(1, Math.max(0, (hz - 3000) / 5000));\n      let a = voiced ? Math.min(1, apBase + (1 - apBase) * (hiNoise * hi + breath * 0.6 * Math.min(1, Math.max(0, (hz - 1200) / 1800)))) : 1;\n      a = Math.max(0.001, a);\n      // 周期成分: 振幅を T/窓の和 にすると、分析時と同じ倍音の高さになる\n      logP[k] = le + Math.log(Math.sqrt(1 - a * a) + 1e-6) + Math.log(T / WSUM);\n      // やわらかさ: 基本周波数のまわり(0〜1.5倍)をなだらかに持ち上げる\n      if (soft && voiced && hz < fout * 1.5) {\n        const bell = hz < fout ? 1 : 1 - (hz - fout) / (fout * 0.5);\n        logP[k] += (soft * Math.max(0, bell) * Math.LN10) / 20;\n      }\n      logN[k] = le + Math.log(a) - 0.5 * Math.log(WSQ);\n    }\n\n    const pos = Math.floor(t);\n    const frac = t - pos;\n    // 周期成分(声帯のパルス)\n    if (voiced) {\n      minPhase(logP, pRe, pIm);\n      for (let k = 0; k <= HALF; k++) {\n        // 小数点以下の時刻ずれを位相で表す\n        const ph = (-2 * Math.PI * k * frac) / N;\n        const c = Math.cos(ph);\n        const s = Math.sin(ph);\n        re[k] = pRe[k] * c - pIm[k] * s;\n        im[k] = pRe[k] * s + pIm[k] * c;\n      }\n      for (let k = HALF + 1; k < N; k++) {\n        re[k] = re[N - k];\n        im[k] = -im[N - k];\n      }\n      fft.transform(re, im, true);\n      for (let n = 0; n < HALF && pos + n < out.length; n++) out[pos + n] += re[n] / N;\n    }\n    // 非周期成分(息・子音): 長さ T の雑音に響きを掛ける\n    minPhase(logN, aRe, aIm);\n    const Tn = Math.max(1, Math.round(T));\n    for (let n = 0; n < N; n++) {\n      nRe[n] = n < Tn ? rand() * Math.sqrt(12) : 0;\n      nIm[n] = 0;\n    }\n    fft.transform(nRe, nIm, false);\n    for (let k = 0; k <= HALF; k++) {\n      const r = nRe[k] * aRe[k] - nIm[k] * aIm[k];\n      const i = nRe[k] * aIm[k] + nIm[k] * aRe[k];\n      re[k] = r;\n      im[k] = i;\n    }\n    for (let k = HALF + 1; k < N; k++) {\n      re[k] = re[N - k];\n      im[k] = -im[N - k];\n    }\n    fft.transform(re, im, true);\n    for (let n = 0; n < N && pos + n < out.length; n++) out[pos + n] += re[n] / N;\n\n    t += T;\n    if (t - lastReport > sr) {\n      lastReport = t;\n      onProgress(0.5 + (0.45 * t) / x.length);\n    }\n  }\n\n  // 4. 音量の流れを元の声に合わせる(20msごと、なめらかに)\n  const y = out.subarray(0, x.length);\n  const blk = Math.round(sr * 0.02);\n  const nb = Math.ceil(x.length / blk);\n  const gains = new Float64Array(nb);\n  for (let b = 0; b < nb; b++) {\n    let pi = 0;\n    let po = 0;\n    for (let n = b * blk; n < Math.min(x.length, (b + 1) * blk); n++) {\n      pi += x[n] * x[n];\n      po += y[n] * y[n];\n    }\n    gains[b] = po > 0 ? Math.sqrt(pi / po) : 0;\n  }\n  // 極端な値をならす(前後5ブロックの中央値)\n  const sm = new Float64Array(nb);\n  for (let b = 0; b < nb; b++) {\n    const a = [];\n    for (let j = b - 2; j <= b + 2; j++) if (j >= 0 && j < nb) a.push(gains[j]);\n    a.sort((p, q) => p - q);\n    sm[b] = a[a.length >> 1];\n  }\n  for (let n = 0; n < x.length; n++) {\n    const f = n / blk - 0.5;\n    const b0 = Math.max(0, Math.min(nb - 1, Math.floor(f)));\n    const b1 = Math.min(nb - 1, b0 + 1);\n    const w2 = Math.min(1, Math.max(0, f - b0));\n    y[n] *= sm[b0] * (1 - w2) + sm[b1] * w2;\n  }\n  onProgress(1);\n  // 念のため、計算できなかった値(NaN・無限大)は無音にする\n  for (let n = 0; n < y.length; n++) if (!Number.isFinite(y[n])) y[n] = 0;\n  return Float32Array.from(y);\n}\n\n// 高品質エンジンを画面の裏(別スレッド)で動かす。長い録音でも画面が固まらない\n\nself.onmessage = (e) => {\n  const { data, sampleRate, opts } = e.data;\n  try {\n    const out = convertHQ(data, sampleRate, { ...opts, onProgress: (p) => self.postMessage({ progress: p }) });\n    self.postMessage({ done: out }, [out.buffer]);\n  } catch (err) {\n    self.postMessage({ error: String(err) });\n  }\n};\n"], { type: 'text/javascript' }));
+</script>
+<script type="module">
+// 声の分析(あなた専用の設定を作るため)。ブラウザとテスト(Node)の両方で使う。
+//   - 声の高さ(基本周波数): 正規化自己相関
+//   - 声道の長さ(のどから唇まで): LPC で共鳴(フォルマント)を出し、その間隔から計算
+//     共鳴は「(2i-1) × 音速 / (4 × 声道の長さ)」に並ぶので、間隔 ΔF から 長さ = 音速 / (2ΔF)
+
+const SOUND_CM = 35000; // 口の中の音速(cm/秒)
+
+// はっきりした周期がない(無声音・無音)ときは null
+function detectF0(buf, sr) {
+  let rms = 0;
+  for (const v of buf) rms += v * v;
+  rms = Math.sqrt(rms / buf.length);
+  if (rms < 0.01) return null;
+  const W = Math.floor(buf.length / 2);
+  const minLag = Math.floor(sr / 400);
+  const maxLag = Math.min(W, Math.floor(sr / 60));
+  const r = new Float32Array(maxLag + 1);
+  for (let lag = minLag; lag <= maxLag; lag++) {
+    let s = 0;
+    let a = 0;
+    let b = 0;
+    for (let i = 0; i < W; i++) {
+      s += buf[i] * buf[i + lag];
+      a += buf[i] * buf[i];
+      b += buf[i + lag] * buf[i + lag];
+    }
+    r[lag] = s / Math.sqrt(a * b + 1e-12);
+  }
+  let mx = 0;
+  for (let l = minLag; l <= maxLag; l++) mx = Math.max(mx, r[l]);
+  if (mx < 0.75) return null;
+  for (let l = minLag + 1; l < maxLag; l++) {
+    if (r[l] > 0.9 * mx && r[l] >= r[l - 1] && r[l] >= r[l + 1]) return sr / l;
+  }
+  return null;
+}
+
+// LPC の共鳴ピーク(Hz)。約11kHzに間引いてから12次で分析する
+function formants(buf, sr) {
+  const step = Math.max(1, Math.round(sr / 11025));
+  const fs = sr / step;
+  const ds = [];
+  for (let i = 0; i + step <= buf.length; i += step) {
+    let s = 0;
+    for (let j = 0; j < step; j++) s += buf[i + j];
+    ds.push(s / step);
+  }
+  // 高い音を少し強調(声の自然な傾きを打ち消して共鳴を見やすくする)
+  for (let i = ds.length - 1; i > 0; i--) ds[i] -= 0.94 * ds[i - 1];
+  const n = ds.length;
+  const P = 12;
+  const w = ds.map((v, i) => v * (0.54 - 0.46 * Math.cos((2 * Math.PI * i) / (n - 1))));
+  const R = [];
+  for (let k = 0; k <= P; k++) {
+    let s = 0;
+    for (let i = k; i < n; i++) s += w[i] * w[i - k];
+    R[k] = s;
+  }
+  if (R[0] <= 0) return [];
+  let a = [1];
+  let e = R[0];
+  for (let i = 1; i <= P; i++) {
+    let acc = R[i];
+    for (let j = 1; j < i; j++) acc += a[j] * R[i - j];
+    const k = -acc / e;
+    const na = a.slice();
+    na[i] = k;
+    for (let j = 1; j < i; j++) na[j] = a[j] + k * a[i - j];
+    a = na;
+    e *= 1 - k * k;
+    if (e <= 0) return [];
+  }
+  // 多項式 z^P + a1 z^(P-1) + ... + aP の根を求め、角度=周波数、半径=共鳴の鋭さ にする
+  const roots = polyRoots(a);
+  const out = [];
+  for (const [re, im] of roots) {
+    if (im <= 0) continue;
+    const f = (Math.atan2(im, re) * fs) / (2 * Math.PI);
+    const bw = (-Math.log(Math.hypot(re, im)) * fs) / Math.PI;
+    // 幅の広すぎる根は共鳴ではなく「全体の傾き」を表しているので除く
+    if (f > 200 && f < 4800 && bw < 450) out.push(f);
+  }
+  return out.sort((p, q) => p - q);
+}
+
+// Durand-Kerner 法で多項式の根(複素数)を求める。a = [1, a1, ..., aP]
+function polyRoots(a) {
+  const P = a.length - 1;
+  let z = [];
+  for (let i = 0; i < P; i++) {
+    const ang = (2 * Math.PI * i) / P + 0.4;
+    z.push([0.9 * Math.cos(ang), 0.9 * Math.sin(ang)]);
+  }
+  const mul = (p, q) => [p[0] * q[0] - p[1] * q[1], p[0] * q[1] + p[1] * q[0]];
+  const div = (p, q) => {
+    const d = q[0] * q[0] + q[1] * q[1] || 1e-30;
+    return [(p[0] * q[0] + p[1] * q[1]) / d, (p[1] * q[0] - p[0] * q[1]) / d];
+  };
+  for (let it = 0; it < 300; it++) {
+    let moved = 0;
+    const nz = z.map((zi, i) => {
+      // 多項式の値(ホーナー法)
+      let v = [1, 0];
+      for (let k = 1; k <= P; k++) {
+        v = mul(v, zi);
+        v[0] += a[k];
+      }
+      let den = [1, 0];
+      z.forEach((zj, j) => {
+        if (j !== i) den = mul(den, [zi[0] - zj[0], zi[1] - zj[1]]);
+      });
+      const d = div(v, den);
+      moved = Math.max(moved, Math.hypot(d[0], d[1]));
+      return [zi[0] - d[0], zi[1] - d[1]];
+    });
+    z = nz;
+    if (moved < 1e-10) break;
+  }
+  return z;
+}
+
+// 共鳴の並びから、共鳴の間隔 ΔF(Hz) を出す。第3共鳴まで見つかった時だけ
+// (声道の長さ = 音速 / 2ΔF。母音ごとに口の形が違うので、1つの母音だけでは長さはぶれる)
+function formantSpacing(fmts) {
+  // 共鳴を番号に割り当てる(i番目の共鳴はおおよそ (2i-1)×(音速/4L) 付近。L=12〜20cm の範囲)
+  const slots = [
+    [200, 1100],
+    [700, 2700],
+    [1900, 3700],
+    [2900, 4800],
+  ];
+  const f = [];
+  let from = 0;
+  slots.forEach(([lo, hi], i) => {
+    const cand = fmts.filter((x) => x >= lo && x <= hi && x > from);
+    if (cand.length) {
+      f[i] = cand[0];
+      from = cand[0] + 150;
+    }
+  });
+  const pts = f.map((fi, i) => [fi, (2 * i + 1) / 2]).filter((p) => p[0]);
+  if (pts.length < 3 || !f[2]) return null;
+  // F_i ≈ (2i-1)/2 × ΔF を最小二乗で当てはめる
+  let num = 0;
+  let den = 0;
+  for (const [fi, c] of pts) {
+    num += fi * c;
+    den += c * c;
+  }
+  return num / den;
+}
+
+const median = (a) => {
+  const s = [...a].sort((p, q) => p - q);
+  return s[s.length >> 1];
+};
+
+// 録った声(Float32Array)から、あなたの声のプロフィールを作る
+function profileVoice(x, sr) {
+  const n = Math.round(sr * 0.04);
+  const hop = Math.round(sr * 0.02);
+  const f0s = [];
+  const spacings = [];
+  for (let i = 0; i + n <= x.length; i += hop) {
+    const seg = x.subarray(i, i + n);
+    const f0 = detectF0(seg, sr);
+    if (!f0) continue;
+    f0s.push(f0);
+    const dF = formantSpacing(formants(seg, sr));
+    if (dF && dF > 700 && dF < 1900) spacings.push(dF);
+  }
+  if (f0s.length < 10) return null;
+  const semis = f0s.map((f) => 12 * Math.log2(f));
+  const mean = semis.reduce((p, q) => p + q) / semis.length;
+  const sd = Math.sqrt(semis.reduce((p, q) => p + (q - mean) ** 2, 0) / semis.length);
+  // 母音ごとのぶれを打ち消すため、上下2割を除いた平均の間隔から長さを出す
+  let tract = null;
+  if (spacings.length >= 8) {
+    const sorted = [...spacings].sort((p, q) => p - q);
+    const cut = Math.floor(sorted.length * 0.2);
+    const mid = sorted.slice(cut, sorted.length - cut);
+    const dF = mid.reduce((p, q) => p + q) / mid.length;
+    tract = Math.round((SOUND_CM / (2 * dF)) * 10) / 10;
+  }
+  return {
+    f0: Math.round(median(f0s)),
+    range: Math.round(sd * 10) / 10, // 声の高さの動き(半音の標準偏差)
+    tract,
+  };
+}
+
+// ナチュラルボイスチェンジャー — 画面の処理
+//   リアルタイム: voice-processor.js(AudioWorklet)
+//   ファイル(高品質): hq-engine.js(Web Worker で作り直し合成)
+//   あなた専用の設定: voice-analysis.js(声の高さ・抑揚の幅・声道の長さを測る)
+
+// 部品ファイルの場所。1ファイル版(コエカワ.html)では、中に埋め込んだ部品を使う
+const asset = (name) => window.__KOEKAWA_ASSETS?.[name] || `./${name}`;
+
+// なりたい声のプリセット。
+//   target: 変換後の声の高さ(Hz)  formant: 平均的な男性の声から見た響きの倍率
+//   range: その声らしい抑揚の幅(半音の標準偏差)  breath: 息っぽさ
+const PRESETS = [
+  { id: "girl", e: "🎀", name: "女の子", desc: "明るくかわいい10〜20代の声", target: 250, formant: 1.2, range: 3.0, breath: 0.35, soft: 3, bright: 3, lowcut: 180 },
+  { id: "sister", e: "💄", name: "お姉さん", desc: "落ち着いた大人の女性の声", target: 205, formant: 1.14, range: 2.6, breath: 0.3, soft: 2.5, bright: 2, lowcut: 150 },
+  { id: "boy", e: "✨", name: "美少年", desc: "澄んだ中性的な少年の声", target: 175, formant: 1.1, range: 2.4, breath: 0.2, soft: 1.5, bright: 2, lowcut: 130 },
+  { id: "ryosei", e: "🌗", name: "両声類(中性)", desc: "男女どちらにも聞こえる声", target: 160, formant: 1.07, range: 2.6, breath: 0.2, soft: 1.5, bright: 1, lowcut: 110 },
+  { id: "shota", e: "🧢", name: "ショタ", desc: "元気な小学生くらいの男の子", target: 260, formant: 1.24, range: 3.2, breath: 0.25, soft: 3, bright: 3, lowcut: 180 },
+  { id: "ikevo", e: "🎩", name: "低音イケボ", desc: "今より低く太い大人の男性の声", target: 0.85, formant: 0.94, range: 2.0, breath: 0.05, soft: 0, bright: -1, lowcut: 50, relative: true },
+];
+// 声道の長さの基準(平均的な男性を測った時の値)。この測り方での基準値
+const REF_TRACT = 16.5;
+
+const KEY = "voice-changer:v1";
+const saved = (() => {
+  try {
+    return JSON.parse(localStorage.getItem(KEY)) || {};
+  } catch {
+    return {};
+  }
+})();
+const state = {
+  f0: saved.f0 || 0,
+  range: saved.range || 0, // あなたの抑揚の幅
+  tract: saved.tract || 0, // あなたの声道の長さ(cm)
+  preset: saved.preset || "girl",
+  pitch: 0,
+  formant: 1,
+  bright: 0,
+  lowcut: 80,
+  breath: 0,
+  inton: 1,
+  soft: 0,
+  gate: saved.gate ?? -55,
+  keepConsonants: saved.keepConsonants ?? true,
+  mine: saved.mine || [], // マイ設定 [{ name, pitch, formant, ... }]
+};
+const CUSTOM_KEYS = ["pitch", "formant", "bright", "lowcut", "breath", "inton", "soft"];
+const persist = () => {
+  try {
+    localStorage.setItem(
+      KEY,
+      JSON.stringify({
+        f0: state.f0,
+        range: state.range,
+        tract: state.tract,
+        preset: state.preset,
+        gate: state.gate,
+        keepConsonants: state.keepConsonants,
+        mine: state.mine,
+        custom: Object.fromEntries(CUSTOM_KEYS.map((k) => [k, state[k]])),
+      }),
+    );
+  } catch {}
+};
+
+const $ = (s) => document.querySelector(s);
+let toastTimer;
+function toast(msg) {
+  const el = $("#toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 2200);
+}
+const myF0 = () => state.f0 || 110;
+const semis = (ratio) => 12 * Math.log2(ratio);
+
+// ---------- 1. あなたの声を測る ----------
+// 6秒ぶん録音して、声の高さ・抑揚の幅・声道の長さを出す
+async function measure() {
+  const btn = $("#measure");
+  btn.disabled = true;
+  let stream;
+  try {
+    // 測定の時は雑音除去もオフ(声の響きの形が変わってしまうため)
+    stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false } });
+  } catch {
+    btn.disabled = false;
+    return toast("マイクを使えません。ブラウザのマイク許可を確認してください");
+  }
+  const ctx = new AudioContext();
+  await ctx.audioWorklet.addModule(asset("capture-processor.js"));
+  const src = ctx.createMediaStreamSource(stream);
+  const an = ctx.createAnalyser();
+  an.fftSize = 2048;
+  src.connect(an);
+  // 圧縮しない生の音を集める
+  const cap = new AudioWorkletNode(ctx, "capture-processor");
+  const chunks = [];
+  cap.port.onmessage = (e) => chunks.push(e.data);
+  src.connect(cap);
+  const buf = new Float32Array(an.fftSize);
+  const start = performance.now();
+  btn.textContent = "🎤 話してください…";
+  await new Promise((done) => {
+    const tick = () => {
+      const t = performance.now() - start;
+      $("#measureBar").style.width = `${Math.min(100, t / 60)}%`;
+      an.getFloatTimeDomainData(buf);
+      const f = detectF0(buf, ctx.sampleRate);
+      if (f) $("#liveF0").textContent = `いまの声:${Math.round(f)}Hz`;
+      t < 6000 ? setTimeout(tick, 80) : done();
+    };
+    tick();
+  });
+  src.disconnect();
+  stream.getTracks().forEach((t) => t.stop());
+  btn.textContent = "🎤 もう一度測る";
+  $("#liveF0").textContent = "分析中…";
+  let prof = null;
+  try {
+    const all = new Float32Array(chunks.reduce((n, c) => n + c.length, 0));
+    let o = 0;
+    for (const c of chunks) {
+      all.set(c, o);
+      o += c.length;
+    }
+    prof = profileVoice(all, ctx.sampleRate);
+  } catch {}
+  ctx.close();
+  btn.disabled = false;
+  $("#liveF0").textContent = "";
+  if (!prof) return toast("声がうまく拾えませんでした。マイクに近づいてもう一度お試しください");
+  state.f0 = prof.f0;
+  state.range = prof.range;
+  state.tract = prof.tract || 0;
+  persist();
+  applyPreset(state.preset === "custom" ? "girl" : state.preset);
+  showF0();
+  toast("あなた専用の設定を作りました");
+}
+
+function showF0() {
+  const f = state.f0;
+  if (!f) {
+    $("#myF0").innerHTML = "未測定(男性の平均 110Hz として計算します)";
+    return;
+  }
+  const kind = f < 130 ? "低めの男性の声" : f < 165 ? "男性〜中性的な声" : f < 210 ? "中性〜女性の低めの声" : "女性の声の高さ";
+  $("#myF0").innerHTML = `<div class="prof">
+    <div><small>声の高さ</small><b>${f}Hz</b><span>${kind}</span></div>
+    <div><small>抑揚の幅</small><b>${state.range ? `${state.range}半音` : "—"}</b><span>${!state.range ? "" : state.range < 1.8 ? "落ち着いた話し方" : state.range < 3 ? "ふつう" : "表情ゆたか"}</span></div>
+    <div><small>声道の長さ(推定)</small><b>${state.tract ? `${state.tract}cm` : "—"}</b><span>${state.tract ? "のどから唇まで" : "測れませんでした"}</span></div>
+  </div>`;
+}
+
+// ---------- 2. プリセットと調整 ----------
+function applyPreset(id) {
+  const p = PRESETS.find((x) => x.id === id) || PRESETS[0];
+  state.preset = p.id;
+  const ratio = p.relative ? p.target : p.target / myF0();
+  state.pitch = Math.round(semis(ratio) * 2) / 2;
+  // あなた専用: 声道がもともと短めの人は響きを少なめに、長めの人は多めに動かす(測定のぶれを考えて ±8% まで)
+  const tractAdj = state.tract ? Math.min(1.08, Math.max(0.92, state.tract / REF_TRACT)) : 1;
+  state.formant = Math.round(p.formant * tractAdj * 100) / 100;
+  // あなた専用: 抑揚が小さめの人は、その声らしい幅まで広げる
+  state.inton = state.range >= 0.8 ? Math.round(Math.min(1.4, Math.max(0.9, p.range / state.range)) * 20) / 20 : p.relative ? 1 : 1.15;
+  state.breath = p.breath;
+  state.soft = p.soft;
+  state.bright = p.bright;
+  state.lowcut = p.lowcut;
+  persist();
+  renderControls();
+  pushParams();
+}
+
+function renderPresets() {
+  $("#presets").innerHTML = PRESETS.map(
+    (p) => `<button class="preset ${p.id === state.preset ? "active" : ""}" data-id="${p.id}"><span class="e">${p.e}</span><b>${p.name}</b><small>${p.desc}</small></button>`,
+  ).join("");
+  document.querySelectorAll(".preset").forEach((b) => (b.onclick = () => applyPreset(b.dataset.id)));
+  renderMine();
+}
+
+// ---------- マイ設定(自分で調整した設定を名前をつけて保存) ----------
+const escHtml = (t) => String(t).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+function renderMine() {
+  $("#mine").innerHTML =
+    state.mine
+      .map(
+        (m, i) =>
+          `<span class="mine ${state.preset === `mine:${i}` ? "active" : ""}"><button data-i="${i}">⭐ ${escHtml(m.name)}</button><button class="del" data-del="${i}" aria-label="削除">×</button></span>`,
+      )
+      .join("") + `<button class="btn small" id="saveMine">＋ 今の設定を保存</button>`;
+  $("#mine").querySelectorAll("[data-i]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        const m = state.mine[Number(b.dataset.i)];
+        for (const k of CUSTOM_KEYS) if (m[k] != null) state[k] = m[k];
+        state.preset = `mine:${b.dataset.i}`;
+        persist();
+        renderControls();
+        pushParams();
+      }),
+  );
+  $("#mine").querySelectorAll("[data-del]").forEach(
+    (b) =>
+      (b.onclick = () => {
+        const i = Number(b.dataset.del);
+        if (!confirm(`「${state.mine[i].name}」を削除しますか？`)) return;
+        state.mine.splice(i, 1);
+        if (state.preset.startsWith("mine:")) state.preset = "custom";
+        persist();
+        renderControls();
+      }),
+  );
+  $("#saveMine").onclick = () => {
+    const name = prompt("この設定の名前(例:配信用の女の子)", "")?.trim().slice(0, 20);
+    if (!name) return;
+    state.mine.push({ name, ...Object.fromEntries(CUSTOM_KEYS.map((k) => [k, state[k]])) });
+    state.preset = `mine:${state.mine.length - 1}`;
+    persist();
+    renderControls();
+    toast(`「${name}」を保存しました`);
+  };
+}
+
+function renderControls() {
+  renderPresets();
+  $("#pitch").value = state.pitch;
+  $("#formant").value = state.formant;
+  $("#bright").value = state.bright;
+  $("#lowcut").value = state.lowcut;
+  $("#breath").value = state.breath;
+  $("#soft").value = state.soft;
+  $("#inton").value = state.inton;
+  $("#gate").value = state.gate;
+  $("#keepConsonants").checked = state.keepConsonants;
+  const after = Math.round(myF0() * 2 ** (state.pitch / 12));
+  $("#pitchVal").textContent = `${state.pitch > 0 ? "+" : ""}${state.pitch} 半音(約 ${after}Hz に)`;
+  $("#formantVal").textContent = `${state.formant.toFixed(2)} 倍`;
+  $("#brightVal").textContent = `${state.bright > 0 ? "+" : ""}${state.bright} dB`;
+  $("#lowcutVal").textContent = `${state.lowcut} Hz 以下`;
+  $("#breathVal").textContent = `${Math.round(state.breath * 100)}%`;
+  $("#softVal").textContent = `+${state.soft} dB`;
+  $("#intonVal").textContent = `${state.inton.toFixed(2)} 倍`;
+}
+
+for (const id of ["pitch", "formant", "bright", "lowcut", "breath", "inton", "soft"]) {
+  $(`#${id}`).addEventListener("input", (e) => {
+    state[id] = Number(e.target.value);
+    state.preset = "custom";
+    persist();
+    renderControls();
+    pushParams();
+  });
+}
+
+$("#gate").onchange = (e) => {
+  state.gate = Number(e.target.value);
+  persist();
+  pushParams();
+};
+$("#keepConsonants").onchange = (e) => {
+  state.keepConsonants = e.target.checked;
+  persist();
+  pushParams();
+};
+
+// 変換に渡す設定
+const vcParams = () => ({
+  pitch: 2 ** (state.pitch / 12),
+  formant: state.formant,
+  breath: state.breath,
+  inton: state.inton,
+  gateDb: state.gate,
+  keepConsonants: state.keepConsonants,
+  baseF0: state.f0 || 0,
+  soft: state.soft,
+});
+
+// ---------- 音の流れ: 入力 → 声の変換 → 低音カット → 明るさ → 出力 ----------
+function buildChain(ctx, source) {
+  const vc = new AudioWorkletNode(ctx, "voice-processor", { processorOptions: vcParams() });
+  const hp = new BiquadFilterNode(ctx, { type: "highpass", frequency: state.lowcut, Q: 0.7 });
+  const shelf = new BiquadFilterNode(ctx, { type: "highshelf", frequency: 3500, gain: state.bright });
+  source.connect(vc).connect(hp).connect(shelf);
+  return { vc, hp, shelf, out: shelf };
+}
+
+let live = null; // リアルタイム変換中の音の流れ
+
+function pushParams() {
+  if (!live) return;
+  live.vc.port.postMessage(vcParams());
+  live.hp.frequency.value = state.lowcut;
+  live.shelf.gain.value = state.bright;
+}
+
+// ---------- 3a. リアルタイム ----------
+async function startLive() {
+  if (live) return stopLive();
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: false, channelCount: 1 },
+    });
+  } catch {
+    return toast("マイクを使えません。ブラウザのマイク許可を確認してください");
+  }
+  const ctx = new AudioContext({ latencyHint: "interactive" });
+  await ctx.audioWorklet.addModule(asset("voice-processor.js"));
+  const chain = buildChain(ctx, ctx.createMediaStreamSource(stream));
+  const recDest = ctx.createMediaStreamDestination();
+  chain.out.connect(ctx.destination);
+  chain.out.connect(recDest);
+  live = { ctx, stream, recDest, ...chain };
+  if ($("#sink").value) await ctx.setSinkId?.($("#sink").value).catch(() => {});
+  // モニター: 変換した声を、別の出力先(ヘッドホン)でも鳴らす。配信で CABLE に送りながら自分でも聞ける
+  live.monitor = new Audio();
+  live.monitor.srcObject = recDest.stream;
+  updateMonitor();
+  if (!$("#sink").options.length || !$("#sink").options[0].textContent.trim() || $("#sink").options[0].textContent.startsWith("出力")) listSinks();
+  $("#liveStart").textContent = "■ 変換ストップ";
+  $("#compare").disabled = false;
+  $("#rec").disabled = false;
+  toast("変換中です。ヘッドホンで自分の声を確認してください");
+}
+
+async function updateMonitor() {
+  if (!live?.monitor) return;
+  if ($("#monitor").checked) {
+    if ($("#monSink").value) await live.monitor.setSinkId?.($("#monSink").value).catch(() => {});
+    live.monitor.play().catch(() => {});
+  } else {
+    live.monitor.pause();
+  }
+}
+$("#monitor").onchange = updateMonitor;
+$("#monSink").onchange = updateMonitor;
+
+function stopLive() {
+  if (!live) return;
+  live.monitor?.pause();
+  if (live.recorder?.state === "recording") live.recorder.stop();
+  live.stream.getTracks().forEach((t) => t.stop());
+  live.ctx.close();
+  live = null;
+  $("#liveStart").textContent = "▶ 変換スタート";
+  for (const id of ["compare", "rec"]) $(`#${id}`).disabled = true;
+  $("#compare").classList.remove("on");
+  $("#rec").classList.remove("rec-on");
+  $("#rec").textContent = "⏺ 録音";
+}
+
+$("#liveStart").onclick = startLive;
+$("#compare").onclick = () => {
+  if (!live) return;
+  const on = !$("#compare").classList.contains("on");
+  $("#compare").classList.toggle("on", on);
+  $("#compare").textContent = on ? "🔁 元の声を再生中(押すと戻る)" : "🔁 元の声と聞きくらべ";
+  live.vc.port.postMessage({ bypass: on });
+};
+
+$("#rec").onclick = () => {
+  if (!live) return;
+  if (live.recorder?.state === "recording") return live.recorder.stop();
+  const chunks = [];
+  const rec = new MediaRecorder(live.recDest.stream);
+  rec.ondataavailable = (e) => chunks.push(e.data);
+  rec.onstop = () => {
+    addClip("#recs", new Blob(chunks, { type: rec.mimeType }), "変換した声の録音", ext(rec.mimeType));
+    $("#rec").classList.remove("rec-on");
+    $("#rec").textContent = "⏺ 録音";
+  };
+  rec.start();
+  live.recorder = rec;
+  $("#rec").classList.add("rec-on");
+  $("#rec").textContent = "■ 録音を止める";
+};
+
+const ext = (mime) => (mime.includes("mp4") ? "m4a" : mime.includes("ogg") ? "ogg" : "webm");
+
+// 出力先(仮想オーディオケーブルなど)を選べるブラウザだけ表示
+async function listSinks() {
+  if (!("setSinkId" in AudioContext.prototype)) return;
+  try {
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const outs = devices.filter((d) => d.kind === "audiooutput");
+    if (!outs.length) return;
+    const opts = outs.map((d, i) => `<option value="${d.deviceId}">${d.label || `出力 ${i + 1}`}</option>`).join("");
+    $("#sink").innerHTML = opts;
+    $("#monSink").innerHTML = opts;
+    $("#sinkWrap").hidden = false;
+    $("#monWrap").hidden = false;
+    $("#sink").onchange = () => live?.ctx.setSinkId($("#sink").value).catch(() => toast("出力先を変更できませんでした"));
+  } catch {}
+}
+
+// ---------- 3b. 録音・ファイルを変換 ----------
+let sourceBuffer = null;
+let rawRecorder = null;
+
+$("#rawRec").onclick = async () => {
+  if (rawRecorder?.state === "recording") return rawRecorder.stop();
+  let stream;
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: false, noiseSuppression: true, autoGainControl: false } });
+  } catch {
+    return toast("マイクを使えません");
+  }
+  const chunks = [];
+  rawRecorder = new MediaRecorder(stream);
+  rawRecorder.ondataavailable = (e) => chunks.push(e.data);
+  rawRecorder.onstop = async () => {
+    stream.getTracks().forEach((t) => t.stop());
+    $("#rawRec").textContent = "⏺ 地声を録音する";
+    $("#rawRec").classList.remove("rec-on");
+    await loadSource(new Blob(chunks), "録音した地声");
+  };
+  rawRecorder.start();
+  $("#rawRec").textContent = "■ 録音を止める";
+  $("#rawRec").classList.add("rec-on");
+};
+
+$("#file").onchange = (e) => {
+  const f = e.target.files[0];
+  if (f) loadSource(f, f.name);
+};
+
+async function loadSource(blob, label) {
+  try {
+    const ctx = new AudioContext();
+    sourceBuffer = await ctx.decodeAudioData(await blob.arrayBuffer());
+    ctx.close();
+    $("#fileName").textContent = `🎧 ${label}(${sourceBuffer.duration.toFixed(1)}秒)`;
+    $("#convert").disabled = false;
+    $("#convertBoth").disabled = false;
+  } catch {
+    toast("この音声ファイルは読み込めませんでした");
+  }
+}
+
+const settingName = () =>
+  PRESETS.find((x) => x.id === state.preset)?.name ||
+  (state.preset.startsWith("mine:") ? state.mine[Number(state.preset.slice(5))]?.name : null) ||
+  "カスタム";
+
+async function convertWith(engines, btn, label) {
+  if (!sourceBuffer) return;
+  btn.disabled = true;
+  try {
+    for (const eng of engines) {
+      const name = eng === "hq" ? "高品質" : "リアルタイム方式";
+      btn.textContent = `${name}で変換中…`;
+      const wav = encodeWav(await renderOffline(sourceBuffer, (pr) => (btn.textContent = `${name}で変換中… ${Math.round(pr * 100)}%`), eng));
+      addClip("#fileOut", wav, `${settingName()}・${name}`, "wav");
+    }
+  } catch (err) {
+    console.error(err);
+    toast("変換に失敗しました");
+  }
+  btn.disabled = false;
+  btn.textContent = label;
+}
+$("#convert").onclick = () => convertWith([$("#engine").value], $("#convert"), "✨ 今の設定で変換");
+// 同じ録音を両方の方式で変換して並べる(自分の声でどちらが自然か聞きくらべる)
+$("#convertBoth").onclick = () => convertWith(["rt", "hq"], $("#convertBoth"), "🎧 両方の方式で変換して聞きくらべ");
+
+// 高品質エンジンを別スレッドで動かす
+function runHQ(mono, sr, onProgress) {
+  return new Promise((resolve, reject) => {
+    const w = new Worker(asset("hq-worker.js"), window.__KOEKAWA_ASSETS ? undefined : { type: "module" });
+    w.onmessage = (e) => {
+      if (e.data.progress != null) onProgress(e.data.progress);
+      if (e.data.done) {
+        w.terminate();
+        resolve(e.data.done);
+      }
+      if (e.data.error) {
+        w.terminate();
+        reject(new Error(e.data.error));
+      }
+    };
+    w.onerror = (e) => {
+      w.terminate();
+      reject(e);
+    };
+    const p = vcParams();
+    w.postMessage({ data: mono, sampleRate: sr, opts: { pitch: p.pitch, formant: p.formant, inton: p.inton, breath: p.breath, baseF0: p.baseF0, soft: p.soft } });
+  });
+}
+
+// 変換処理の遅れ(1536サンプル)ぶん長めに作って先頭を切る
+const LATENCY = 1536;
+async function renderOffline(buf, onProgress = () => {}, engine = $("#engine").value) {
+  const sr = buf.sampleRate;
+  const mono = new Float32Array(buf.length);
+  for (let c = 0; c < buf.numberOfChannels; c++) buf.getChannelData(c).forEach((v, i) => (mono[i] += v / buf.numberOfChannels));
+  const hq = engine === "hq";
+  const input = hq ? await runHQ(mono, sr, onProgress) : mono;
+  const ctx = new OfflineAudioContext(1, buf.length + LATENCY + sr, sr);
+  const inBuf = ctx.createBuffer(1, buf.length, sr);
+  inBuf.copyToChannel(input, 0);
+  const src = new AudioBufferSourceNode(ctx, { buffer: inBuf });
+  if (hq) {
+    // 高品質エンジンの後ろには、低音カットと明るさだけを掛ける
+    const hp = new BiquadFilterNode(ctx, { type: "highpass", frequency: state.lowcut, Q: 0.7 });
+    const shelf = new BiquadFilterNode(ctx, { type: "highshelf", frequency: 3500, gain: state.bright });
+    src.connect(hp).connect(shelf).connect(ctx.destination);
+  } else {
+    await ctx.audioWorklet.addModule(asset("voice-processor.js"));
+    buildChain(ctx, src).out.connect(ctx.destination);
+  }
+  src.start();
+  const skip = hq ? 0 : LATENCY;
+  const out = (await ctx.startRendering()).getChannelData(0).slice(skip, skip + buf.length);
+  // 音割れしないよう最大音量を -1dB にそろえる
+  let peak = 0;
+  for (const v of out) peak = Math.max(peak, Math.abs(v));
+  if (peak > 0) {
+    const g = 0.89 / peak;
+    for (let i = 0; i < out.length; i++) out[i] *= g;
+  }
+  return { data: out, sampleRate: sr };
+}
+
+function encodeWav({ data, sampleRate }) {
+  const buf = new ArrayBuffer(44 + data.length * 2);
+  const v = new DataView(buf);
+  const str = (o, s) => [...s].forEach((c, i) => v.setUint8(o + i, c.charCodeAt(0)));
+  str(0, "RIFF");
+  v.setUint32(4, 36 + data.length * 2, true);
+  str(8, "WAVE");
+  str(12, "fmt ");
+  v.setUint32(16, 16, true);
+  v.setUint16(20, 1, true);
+  v.setUint16(22, 1, true);
+  v.setUint32(24, sampleRate, true);
+  v.setUint32(28, sampleRate * 2, true);
+  v.setUint16(32, 2, true);
+  v.setUint16(34, 16, true);
+  str(36, "data");
+  v.setUint32(40, data.length * 2, true);
+  for (let i = 0; i < data.length; i++) v.setInt16(44 + i * 2, Math.max(-1, Math.min(1, data[i])) * 0x7fff, true);
+  return new Blob([buf], { type: "audio/wav" });
+}
+
+function addClip(target, blob, label, extension) {
+  const url = URL.createObjectURL(blob);
+  const stamp = new Date().toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit", second: "2-digit" }).replaceAll(":", "");
+  const el = document.createElement("div");
+  el.className = "clip";
+  el.innerHTML = `<span>${label}</span><audio controls src="${url}"></audio><a href="${url}" download="voice-${stamp}.${extension}">保存</a>`;
+  $(target).prepend(el);
+}
+
+// ---------- タブ ----------
+document.querySelectorAll(".tab").forEach(
+  (t) =>
+    (t.onclick = () => {
+      document.querySelectorAll(".tab").forEach((x) => x.classList.toggle("active", x === t));
+      $("#pane-live").hidden = t.dataset.tab !== "live";
+      $("#pane-file").hidden = t.dataset.tab !== "file";
+    }),
+);
+
+// ---------- 起動 ----------
+// マイクは https か localhost のページでしか使えない(スマホで開く時は https で公開したページを使う)
+if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+  document.querySelector("header").insertAdjacentHTML(
+    "beforeend",
+    `<p class="warn">⚠️ このページではマイクが使えません。パソコンでは http://localhost で、スマホでは https で公開したページ(GitHub Pages など)で開いてください。</p>`,
+  );
+}
+$("#measure").onclick = measure;
+showF0();
+if ((state.preset === "custom" || state.preset.startsWith("mine:")) && saved.custom) {
+  Object.assign(state, saved.custom);
+  state.breath ??= 0;
+  state.soft ??= 0;
+  state.inton ??= 1;
+  renderControls();
+} else {
+  applyPreset(state.preset);
+}
+listSinks();
+
+</script>
+</body>
+</html>

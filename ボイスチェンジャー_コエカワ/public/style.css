@@ -70,3 +70,4 @@ input[type="range"] { width: 100%; accent-color: #22d3ee; margin-top: 6px; }
 .mine button { background: none; border: 0; padding: 7px 12px; font-size: 13px; font-weight: 700; }
 .mine .del { padding: 7px 10px 7px 4px; color: var(--muted); }
 .btn.small { padding: 7px 12px; font-size: 13px; }
+header h1 small { font-size: 13px; color: var(--muted); font-weight: 400; margin-left: 6px; }
