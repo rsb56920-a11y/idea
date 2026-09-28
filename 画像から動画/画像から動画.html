@@ -1,0 +1,1077 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#0f1115" />
+  <title>画像から動画メーカー</title>
+  <style>
+:root { --bg: #0f1115; --card: #181b22; --line: #2a2f3a; --text: #f1f3f7; --muted: #9aa3b2; --accent: #f97316; --grad: linear-gradient(135deg, #f97316, #ec4899); }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", sans-serif; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+#app { max-width: 1100px; margin: 0 auto; padding: 16px; }
+header h1 { font-size: 24px; margin: 12px 0 6px; }
+.muted { color: var(--muted); font-size: 14px; line-height: 1.7; }
+.hint { color: var(--muted); font-size: 12px; line-height: 1.6; }
+.center { text-align: center; }
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: start; margin-top: 12px; }
+@media (max-width: 820px) { .layout { grid-template-columns: 1fr; } .preview { order: -1; } }
+.card { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 16px; margin-bottom: 16px; }
+.card h2 { font-size: 16px; margin: 0 0 12px; }
+.settings label { display: block; font-size: 14px; margin: 12px 0; }
+.settings select { display: block; width: 100%; margin-top: 6px; background: #20242d; border: 1px solid var(--line); border-radius: 10px; padding: 9px; }
+.settings b { color: var(--accent); margin-left: 6px; }
+input[type="range"] { width: 100%; accent-color: #f97316; margin-top: 6px; }
+.check { display: flex !important; align-items: center; gap: 8px; }
+.drop { display: grid !important; place-items: center; border: 2px dashed var(--line); border-radius: 14px; padding: 26px 12px; text-align: center; color: var(--muted); cursor: pointer; margin: 0 !important; }
+.drop.over { border-color: var(--accent); color: var(--text); }
+.slide { display: grid; grid-template-columns: 64px 1fr auto; gap: 10px; align-items: center; background: #20242d; border-radius: 12px; padding: 8px; margin-top: 8px; }
+.slide img { width: 64px; height: 64px; object-fit: cover; border-radius: 8px; }
+.slide input { width: 100%; background: #15181e; border: 1px solid var(--line); border-radius: 8px; padding: 7px; font-size: 13px; }
+.slide select { margin-top: 6px !important; padding: 5px !important; font-size: 12px; }
+.slide .ops { display: flex; flex-direction: column; gap: 4px; }
+.slide .ops button { background: #2a2f3a; border: 0; border-radius: 6px; width: 30px; height: 26px; font-size: 12px; }
+.btn { background: #252a34; border: 1px solid var(--line); border-radius: 12px; padding: 11px 16px; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.btn.main { background: var(--grad); border: 0; color: #fff; }
+.btn:disabled { opacity: 0.4; cursor: default; }
+.btn.file { cursor: pointer; }
+.preview { position: sticky; top: 16px; }
+.stage { background: #000; border-radius: 12px; display: grid; place-items: center; overflow: hidden; }
+.stage canvas { max-width: 100%; max-height: 62vh; display: block; }
+.bar { height: 6px; background: var(--line); border-radius: 999px; margin: 12px 0 4px; overflow: hidden; cursor: pointer; }
+.bar div { height: 100%; width: 0; background: var(--grad); }
+.row { display: flex; gap: 8px; }
+.row .btn { flex: 1; }
+#result video { width: 100%; max-height: 50vh; border-radius: 12px; margin-top: 12px; background: #000; }
+#result a { display: block; text-align: center; margin-top: 8px; color: var(--accent); font-weight: 700; }
+#toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(20px); background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 999px; font-size: 13px; opacity: 0; pointer-events: none; transition: 0.2s; }
+#toast.show { opacity: 1; transform: translateX(-50%); }
+/* ---- お願い ---- */
+body { background: radial-gradient(900px 500px at 0% -10%, rgba(249, 115, 22, 0.14), transparent 60%), radial-gradient(800px 500px at 100% 0%, rgba(236, 72, 153, 0.14), transparent 60%), var(--bg); background-attachment: fixed; }
+header h1 small { font-size: 13px; font-weight: 700; margin-left: 8px; padding: 3px 10px; border-radius: 999px; background: var(--grad); color: #fff; vertical-align: middle; }
+textarea { font: inherit; color: inherit; width: 100%; background: #15181e; border: 1px solid var(--line); border-radius: 12px; padding: 12px; font-size: 16px; resize: vertical; }
+textarea:focus, input:focus, select:focus { outline: 2px solid rgba(249, 115, 22, 0.6); outline-offset: 1px; }
+.card.wish { border-color: rgba(236, 72, 153, 0.45); box-shadow: 0 10px 40px rgba(236, 72, 153, 0.12); }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px; min-height: 8px; }
+.chip { padding: 5px 12px; border-radius: 999px; font-size: 13px; font-weight: 700; background: rgba(249, 115, 22, 0.14); border: 1px solid rgba(249, 115, 22, 0.45); animation: pop 0.25s ease; }
+@keyframes pop { from { transform: scale(0.8); opacity: 0; } }
+.examples { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.btn.small { padding: 6px 10px; font-size: 12px; border-radius: 999px; font-weight: 600; }
+.slide input + input { margin-top: 6px; }
+
+</style>
+</head>
+<body>
+  <div id="app">
+    <header>
+      <h1>🎬 画像から動画メーカー <small>ユメウゴキ</small></h1>
+      <p class="muted">写真を入れるだけで、ゆっくり動くおしゃれな動画に。TikTok・リール・ショート向けの縦動画も作れます。画像はこのパソコンの中だけで処理します。</p>
+    </header>
+
+    <div class="layout">
+      <section class="settings">
+        <div class="card">
+          <h2>① 画像を入れる</h2>
+          <label class="drop" id="drop">
+            <input type="file" id="files" accept="image/*" multiple hidden />
+            <span>📷 ここをクリック、または画像をドラッグ＆ドロップ</span>
+          </label>
+          <div id="slides"></div>
+        </div>
+
+        <div class="card wish">
+          <h2>② ✨ お願いを書く(かなえます)</h2>
+          <p class="hint">どんな動画にしたいか、ふつうの言葉で書いてください。例:「桜が舞って、夕焼けっぽく、ゆっくり近づいて」「雪が降る夜にして」「誕生日のお祝い」「雲が流れて光が差す」</p>
+          <textarea id="wish" rows="2" placeholder="例:桜がたくさん舞って、夢のようにふんわり"></textarea>
+          <div class="chips" id="wishChips"></div>
+          <p class="hint" id="wishNote"></p>
+          <div class="examples" id="wishExamples"></div>
+        </div>
+
+        <div class="card">
+          <h2>③ 動画の形と動き</h2>
+          <label>サイズ
+            <select id="aspect">
+              <option value="9:16">縦 9:16(TikTok・リール・ショート)</option>
+              <option value="1:1">正方形 1:1(Instagram 投稿)</option>
+              <option value="16:9">横 16:9(YouTube)</option>
+            </select></label>
+          <label>画像の収め方
+            <select id="fit">
+              <option value="contain">全体を見せる(背景はぼかし)</option>
+              <option value="cover">画面いっぱいに広げる(はみ出しは切る)</option>
+            </select></label>
+          <label>動き(全体)
+            <select id="motion">
+              <option value="auto">おまかせ(1枚ずつ変える)</option>
+              <option value="zoomIn">ゆっくりズームイン</option>
+              <option value="zoomOut">ゆっくりズームアウト</option>
+              <option value="panLeft">左へ流れる</option>
+              <option value="panRight">右へ流れる</option>
+              <option value="panUp">上へ流れる</option>
+              <option value="none">動かさない</option>
+            </select></label>
+          <label>切り替え
+            <select id="transition">
+              <option value="fade">ふわっと(クロスフェード)</option>
+              <option value="slide">スライド</option>
+              <option value="zoom">ズーム</option>
+              <option value="flash">フラッシュ</option>
+              <option value="none">パッと切り替え</option>
+            </select></label>
+          <label>1枚の長さ <b id="durVal"></b>
+            <input type="range" id="dur" min="1.5" max="8" step="0.5" value="3" /></label>
+          <label class="check"><input type="checkbox" id="sparkle" /> ✨ キラキラを散らす</label>
+        </div>
+
+        <div class="card">
+          <h2>④ 音楽(任意)</h2>
+          <label class="btn file">🎵 音楽ファイルを選ぶ<input type="file" id="bgm" accept="audio/*" hidden /></label>
+          <p class="muted" id="bgmName">音楽なし</p>
+          <label>音量 <b id="volVal"></b><input type="range" id="vol" min="0" max="1" step="0.05" value="0.8" /></label>
+          <p class="hint">著作権のある曲を投稿に使うと、削除や収益化停止になることがあります。フリー音源か、各SNSの公式の音源機能を使ってください。</p>
+        </div>
+      </section>
+
+      <section class="preview card">
+        <div class="stage"><canvas id="canvas"></canvas></div>
+        <div class="bar"><div id="seek"></div></div>
+        <p class="muted center" id="timeLabel">0.0 / 0.0 秒</p>
+        <div class="row">
+          <button class="btn" id="play">▶ プレビュー</button>
+          <button class="btn main" id="export">⬇ 動画を書き出す</button>
+        </div>
+        <p class="hint center" id="exportNote"></p>
+        <div id="result"></div>
+      </section>
+    </div>
+  </div>
+  <div id="toast" role="status"></div>
+  <script type="module">
+// ===== effects.js =====
+// 画面全体にかける効果: 舞うもの(桜・雪・雨…)・色の雰囲気・光。
+// どれも時刻 t だけで形が決まるので、プレビューと書き出しがまったく同じになる。
+
+// 決まった乱数(k 番目の粒の性質)
+const rnd = (k, s = 0) => {
+  const v = Math.sin(k * 127.1 + s * 311.7) * 43758.5453;
+  return v - Math.floor(v);
+};
+
+const PARTICLES = {
+  sakura: { name: "🌸 桜", count: 60 },
+  snow: { name: "❄️ 雪", count: 140 },
+  rain: { name: "☔ 雨", count: 220 },
+  leaves: { name: "🍁 紅葉", count: 40 },
+  glow: { name: "✨ 光の粒", count: 60 },
+  stars: { name: "⭐ 星がまたたく", count: 120 },
+  shooting: { name: "🌠 流れ星", count: 3 },
+  hearts: { name: "💗 ハート", count: 30 },
+  confetti: { name: "🎉 紙吹雪", count: 120 },
+  bubbles: { name: "🫧 シャボン玉", count: 25 },
+  feathers: { name: "🪶 羽", count: 18 },
+  fireworks: { name: "🎆 花火", count: 4 },
+};
+
+const GRADES = {
+  sunset: { name: "🌇 夕焼け" },
+  night: { name: "🌙 夜" },
+  film: { name: "📼 フィルム(思い出)" },
+  dream: { name: "☁️ 夢のように" },
+  mono: { name: "🖤 白黒" },
+  vivid: { name: "🌈 あざやか" },
+  cool: { name: "🧊 すずしげ" },
+};
+
+// 舞うものを描く。amount: 0.5〜2(量)
+function drawParticles(ctx, type, t, W, H, amount = 1) {
+  const P = PARTICLES[type];
+  if (!P) return;
+  const n = Math.round(P.count * amount);
+  const u = Math.min(W, H) / 1080; // 画面の大きさに合わせた単位
+  ctx.save();
+  for (let k = 0; k < n; k++) {
+    const a = rnd(k, 1), b = rnd(k, 2), c = rnd(k, 3), d = rnd(k, 4);
+    switch (type) {
+      case "sakura":
+      case "leaves":
+      case "feathers": {
+        // ひらひら落ちる: 横に揺れながら、くるくる回る
+        const fall = type === "feathers" ? 0.05 : 0.09;
+        const sp = fall * (0.6 + b * 0.8);
+        const y = ((c + t * sp) % 1.1) * H * 1.1 - H * 0.05;
+        const x = (a * W * 1.2 - W * 0.1 + Math.sin(t * (0.8 + d) + k) * W * 0.05 + t * W * 0.02 * (type === "leaves" ? 1 : 0.5)) % (W * 1.2);
+        const s = (type === "feathers" ? 26 : type === "leaves" ? 20 : 14) * (0.6 + b * 0.8) * u;
+        const rot = t * (1 + d * 2) + k;
+        const flip = Math.abs(Math.cos(t * (1.5 + a) + k)); // 裏返りながら落ちる
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(rot);
+        ctx.scale(1, 0.3 + 0.7 * flip);
+        ctx.globalAlpha = 0.9;
+        if (type === "sakura") {
+          const g = ctx.createRadialGradient(0, 0, 0, 0, 0, s);
+          g.addColorStop(0, "#fff0f5");
+          g.addColorStop(1, "#ffb7cf");
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.moveTo(0, -s);
+          ctx.bezierCurveTo(s * 0.9, -s * 0.6, s * 0.7, s * 0.6, 0, s);
+          ctx.bezierCurveTo(-s * 0.7, s * 0.6, -s * 0.9, -s * 0.6, -s * 0.2, -s * 0.9);
+          ctx.lineTo(0, -s * 0.7);
+          ctx.fill();
+        } else if (type === "leaves") {
+          ctx.fillStyle = ["#e0452b", "#f08a24", "#c9352a", "#e8b32c"][k % 4];
+          ctx.beginPath();
+          for (let q = 0; q < 10; q++) {
+            const ang = (q / 10) * Math.PI * 2;
+            const r = q % 2 ? s * 0.45 : s;
+            ctx.lineTo(Math.cos(ang) * r, Math.sin(ang) * r);
+          }
+          ctx.fill();
+        } else {
+          ctx.strokeStyle = "rgba(255,255,255,0.9)";
+          ctx.lineWidth = 1.5 * u;
+          ctx.fillStyle = "rgba(255,255,255,0.75)";
+          ctx.beginPath();
+          ctx.ellipse(0, 0, s * 0.3, s, 0, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.beginPath();
+          ctx.moveTo(0, s);
+          ctx.lineTo(0, -s);
+          ctx.stroke();
+        }
+        ctx.restore();
+        break;
+      }
+      case "snow": {
+        const sp = 0.05 + b * 0.07;
+        const y = ((c + t * sp) % 1) * H;
+        const x = (a * W + Math.sin(t * (0.5 + d) + k) * 30 * u + W) % W;
+        const r = (1.5 + b * 4) * u;
+        ctx.globalAlpha = 0.5 + b * 0.5;
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+        break;
+      }
+      case "rain": {
+        const sp = 1.2 + b * 0.8;
+        const y = ((c + t * sp) % 1.2) * H - H * 0.1;
+        const x = (a * W * 1.2 + y * 0.12) % (W * 1.2);
+        const len = (30 + b * 50) * u;
+        ctx.globalAlpha = 0.25 + b * 0.35;
+        ctx.strokeStyle = "#dfe8ff";
+        ctx.lineWidth = (1 + b) * u;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + len * 0.12, y + len);
+        ctx.stroke();
+        break;
+      }
+      case "glow":
+      case "bubbles": {
+        // ふわふわ上っていく
+        const sp = (type === "bubbles" ? 0.06 : 0.03) * (0.6 + b);
+        const y = H * 1.05 - ((c + t * sp) % 1.15) * H;
+        const x = a * W + Math.sin(t * (0.6 + d) + k * 2) * 40 * u;
+        const r = (type === "bubbles" ? 22 + b * 40 : 3 + b * 7) * u;
+        if (type === "glow") {
+          const tw = 0.5 + 0.5 * Math.sin(t * (2 + d * 3) + k);
+          const g = ctx.createRadialGradient(x, y, 0, x, y, r * 3);
+          g.addColorStop(0, `rgba(255,245,200,${0.9 * tw})`);
+          g.addColorStop(1, "rgba(255,245,200,0)");
+          ctx.fillStyle = g;
+          ctx.globalCompositeOperation = "lighter";
+          ctx.beginPath();
+          ctx.arc(x, y, r * 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.globalCompositeOperation = "source-over";
+        } else {
+          const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r);
+          g.addColorStop(0, "rgba(255,255,255,0.5)");
+          g.addColorStop(0.7, `hsla(${(k * 40 + t * 30) % 360},80%,80%,0.15)`);
+          g.addColorStop(1, "rgba(255,255,255,0.45)");
+          ctx.fillStyle = g;
+          ctx.beginPath();
+          ctx.arc(x, y, r, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        break;
+      }
+      case "stars": {
+        // 上半分でまたたく
+        const x = a * W;
+        const y = b * b * H * 0.6;
+        const tw = Math.max(0, Math.sin(t * (1 + d * 3) + k * 3));
+        const r = (1 + c * 2.5) * u;
+        ctx.globalAlpha = 0.3 + 0.7 * tw;
+        ctx.fillStyle = "#fff";
+        ctx.beginPath();
+        ctx.arc(x, y, r, 0, Math.PI * 2);
+        ctx.fill();
+        if (c > 0.8) {
+          ctx.strokeStyle = `rgba(255,255,255,${0.6 * tw})`;
+          ctx.lineWidth = u;
+          ctx.beginPath();
+          ctx.moveTo(x - r * 5, y);
+          ctx.lineTo(x + r * 5, y);
+          ctx.moveTo(x, y - r * 5);
+          ctx.lineTo(x, y + r * 5);
+          ctx.stroke();
+        }
+        break;
+      }
+      case "shooting": {
+        const period = 3.5;
+        const ph = ((t + k * 1.3) % period) / period;
+        if (ph > 0.3) break;
+        const q = ph / 0.3;
+        const x0 = (0.3 + a * 0.7) * W, y0 = b * H * 0.3;
+        const x = x0 - q * W * 0.5, y = y0 + q * H * 0.25;
+        const g = ctx.createLinearGradient(x, y, x + W * 0.15, y - H * 0.075);
+        g.addColorStop(0, `rgba(255,255,255,${1 - q})`);
+        g.addColorStop(1, "rgba(255,255,255,0)");
+        ctx.strokeStyle = g;
+        ctx.lineWidth = 3 * u;
+        ctx.beginPath();
+        ctx.moveTo(x, y);
+        ctx.lineTo(x + W * 0.15, y - H * 0.075);
+        ctx.stroke();
+        break;
+      }
+      case "hearts": {
+        const sp = 0.05 * (0.6 + b);
+        const y = H * 1.05 - ((c + t * sp) % 1.15) * H;
+        const x = a * W + Math.sin(t + k) * 30 * u;
+        const s = (14 + b * 22) * u;
+        ctx.globalAlpha = 0.85;
+        ctx.fillStyle = ["#ff5d8f", "#ff8fb1", "#ffc2d4"][k % 3];
+        ctx.beginPath();
+        ctx.moveTo(x, y + s * 0.35);
+        ctx.bezierCurveTo(x - s, y - s * 0.4, x - s * 0.4, y - s, x, y - s * 0.4);
+        ctx.bezierCurveTo(x + s * 0.4, y - s, x + s, y - s * 0.4, x, y + s * 0.35);
+        ctx.fill();
+        break;
+      }
+      case "confetti": {
+        const sp = 0.12 * (0.6 + b);
+        const y = ((c + t * sp) % 1.1) * H * 1.1 - H * 0.05;
+        const x = (a * W + Math.sin(t * 2 + k) * 25 * u + W) % W;
+        const s = (8 + b * 10) * u;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(t * (2 + d * 4) + k);
+        ctx.scale(1, Math.cos(t * 5 + k));
+        ctx.fillStyle = `hsl(${(k * 47) % 360},90%,60%)`;
+        ctx.fillRect(-s / 2, -s / 4, s, s / 2);
+        ctx.restore();
+        break;
+      }
+      case "fireworks": {
+        const period = 2.6;
+        const ph = ((t + k * 0.9) % period) / period;
+        const cx = (0.15 + a * 0.7) * W, cy = (0.12 + b * 0.3) * H;
+        const hue = (k * 90 + Math.floor((t + k * 0.9) / period) * 50) % 360;
+        const R = (180 + c * 160) * u * Math.min(1, ph * 3);
+        const fade = Math.max(0, 1 - ph * 1.3);
+        ctx.globalCompositeOperation = "lighter";
+        for (let q = 0; q < 36; q++) {
+          const ang = (q / 36) * Math.PI * 2;
+          const x = cx + Math.cos(ang) * R, y = cy + Math.sin(ang) * R + ph * ph * 80 * u;
+          ctx.fillStyle = `hsla(${hue},100%,65%,${fade})`;
+          ctx.beginPath();
+          ctx.arc(x, y, 3.5 * u, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        ctx.globalCompositeOperation = "source-over";
+        break;
+      }
+    }
+  }
+  ctx.restore();
+}
+
+// 色の雰囲気(描いたあとに上から重ねる)
+function drawGrade(ctx, grade, W, H, t) {
+  if (!grade) return;
+  ctx.save();
+  switch (grade) {
+    case "sunset": {
+      ctx.globalCompositeOperation = "soft-light";
+      const g = ctx.createLinearGradient(0, 0, 0, H);
+      g.addColorStop(0, "rgba(255,120,60,0.75)");
+      g.addColorStop(1, "rgba(120,40,120,0.6)");
+      ctx.fillStyle = g;
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalCompositeOperation = "screen";
+      const s = ctx.createRadialGradient(W * 0.7, H * 0.25, 0, W * 0.7, H * 0.25, W * 0.8);
+      s.addColorStop(0, "rgba(255,170,90,0.35)");
+      s.addColorStop(1, "rgba(255,170,90,0)");
+      ctx.fillStyle = s;
+      ctx.fillRect(0, 0, W, H);
+      break;
+    }
+    case "night": {
+      ctx.globalCompositeOperation = "multiply";
+      ctx.fillStyle = "rgba(60,80,150,0.85)";
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalCompositeOperation = "screen";
+      ctx.fillStyle = "rgba(20,30,70,0.25)";
+      ctx.fillRect(0, 0, W, H);
+      break;
+    }
+    case "cool": {
+      ctx.globalCompositeOperation = "soft-light";
+      ctx.fillStyle = "rgba(80,170,255,0.6)";
+      ctx.fillRect(0, 0, W, H);
+      break;
+    }
+    case "film": {
+      ctx.globalCompositeOperation = "soft-light";
+      ctx.fillStyle = "rgba(255,190,120,0.55)";
+      ctx.fillRect(0, 0, W, H);
+      ctx.globalCompositeOperation = "source-over";
+      // 粒子(フィルムのざらつき): フレームごとに変わる
+      const f = Math.floor(t * 24);
+      ctx.globalAlpha = 0.07;
+      for (let k = 0; k < 900; k++) {
+        ctx.fillStyle = rnd(k, f) > 0.5 ? "#fff" : "#000";
+        ctx.fillRect(rnd(k * 3, f) * W, rnd(k * 7, f) * H, 2, 2);
+      }
+      ctx.globalAlpha = 1;
+      break;
+    }
+    case "dream": {
+      ctx.globalCompositeOperation = "screen";
+      ctx.fillStyle = "rgba(255,220,240,0.18)";
+      ctx.fillRect(0, 0, W, H);
+      break;
+    }
+    case "vivid":
+    case "mono":
+      break; // フィルターで処理(applyFilter)
+  }
+  ctx.restore();
+  // 周辺を少し暗く(映画っぽく)
+  if (grade === "film" || grade === "night" || grade === "sunset" || grade === "dream") {
+    const v = ctx.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
+    v.addColorStop(0, "rgba(0,0,0,0)");
+    v.addColorStop(1, `rgba(0,0,0,${grade === "dream" ? 0.25 : 0.5})`);
+    ctx.fillStyle = v;
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+// 画像を描くときのフィルター(白黒・あざやか・夢)
+function filterOf(grade) {
+  return grade === "mono" ? "grayscale(1) contrast(1.1)" : grade === "vivid" ? "saturate(1.45) contrast(1.08)" : grade === "dream" ? "saturate(1.1) brightness(1.05)" : "none";
+}
+
+// 光が差す(左上から斜めの光の筋が、ゆっくり揺れる)
+function drawRays(ctx, W, H, t) {
+  ctx.save();
+  ctx.globalCompositeOperation = "screen";
+  for (let k = 0; k < 6; k++) {
+    const a = rnd(k, 9);
+    const sway = Math.sin(t * 0.4 + k) * 0.03;
+    const x = (0.05 + a * 0.6 + sway) * W;
+    const wdt = (0.04 + rnd(k, 8) * 0.08) * W;
+    const alpha = 0.10 + 0.08 * Math.sin(t * 0.7 + k * 2);
+    const g = ctx.createLinearGradient(x, 0, x + H * 0.45, H);
+    g.addColorStop(0, `rgba(255,240,200,${alpha})`);
+    g.addColorStop(1, "rgba(255,240,200,0)");
+    ctx.fillStyle = g;
+    ctx.beginPath();
+    ctx.moveTo(x, -10);
+    ctx.lineTo(x + wdt, -10);
+    ctx.lineTo(x + wdt + H * 0.45, H);
+    ctx.lineTo(x + H * 0.45, H);
+    ctx.fill();
+  }
+  const s = ctx.createRadialGradient(0, 0, 0, 0, 0, Math.max(W, H) * 0.6);
+  s.addColorStop(0, "rgba(255,245,210,0.35)");
+  s.addColorStop(1, "rgba(255,245,210,0)");
+  ctx.fillStyle = s;
+  ctx.fillRect(0, 0, W, H);
+  ctx.restore();
+}
+
+// ===== wish.js =====
+// 「お願い」の文章から、かける効果を決める(AIを使わず、言葉の辞書で読み取る)。
+// 例: 「桜が舞って夕焼けっぽく、ゆっくり近づいて」→ 桜・夕焼け・ズームイン・ゆっくり
+
+const RULES = [
+  // [正規表現, 効果] 上から順に見る
+  [/流れ星/, { particles: ["shooting"] }],
+  [/桜|さくら|サクラ|花びら|花吹雪/, { particles: ["sakura"] }],
+  [/雪|ゆき|スノー|冬/, { particles: ["snow"] }],
+  [/雨|あめ|レイン|しとしと|梅雨/, { particles: ["rain"] }],
+  [/紅葉|もみじ|落ち葉|秋/, { particles: ["leaves"] }],
+  [/蛍|ほたる|光の粒|きらきら|キラキラ|輝|かがやく|魔法|まほう/, { particles: ["glow"] }],
+  [/星空|星が|ほし|満天|スター|宇宙/, { particles: ["stars"], grade: "night" }],
+  [/ハート|恋|すき|好き|ラブ|愛/, { particles: ["hearts"] }],
+  [/紙吹雪|お祝い|おいわい|誕生日|たんじょうび|おめでと|パーティ|祝/, { particles: ["confetti"] }],
+  [/泡|シャボン|しゃぼん/, { particles: ["bubbles"] }],
+  [/羽|はね|天使/, { particles: ["feathers"] }],
+  [/花火|はなび/, { particles: ["fireworks"], grade: "night" }],
+  [/夕焼け|夕日|ゆうひ|夕暮れ|たそがれ|黄昏|エモ/, { grade: "sunset" }],
+  [/夜|よる|ナイト|月夜|月明/, { grade: "night" }],
+  [/昔|むかし|レトロ|フィルム|思い出|おもいで|懐かし|なつかし|ノスタル/, { grade: "film" }],
+  [/夢|ゆめ|幻想|ファンタジー|ふんわり|やさしい|優しい|柔らか/, { grade: "dream" }],
+  [/白黒|モノクロ|モノトーン/, { grade: "mono" }],
+  [/鮮やか|あざやか|映え|ばえ|はっきり|カラフル/, { grade: "vivid" }],
+  [/涼し|すずし|夏|爽やか|さわやか|クール/, { grade: "cool" }],
+  [/光が差|ひかりがさ|日差し|木漏れ日|こもれび|神々し|光を|光って|ひかって/, { rays: true }],
+  // カメラの動き
+  [/近づ|ちかづ|寄って|よって|ズームイン|アップ/, { camera: "zoomIn" }],
+  [/遠ざか|離れ|はなれ|引いて|ひいて|ズームアウト|全体を見せ/, { camera: "zoomOut" }],
+  [/右へ|右に|みぎ/, { camera: "panRight" }],
+  [/左へ|左に|ひだり/, { camera: "panLeft" }],
+  [/上へ|上に|見上げ|うえに/, { camera: "panUp" }],
+  [/止め|止まっ|動かさない|固定/, { camera: "none" }],
+  [/ゆっくり|ゆったり|のんびり|静か|しずか/, { speed: 0.7 }],
+  [/速く|はやく|テンポ|スピード|元気|げんき/, { speed: 1.4 }],
+  // 写真の一部を動かす(なぞって場所を決める。空・水は自動でもさがす)
+  [/滝|たき/, { region: { fx: "flow", dir: "down", area: "paint", label: "滝が流れる" } }],
+  [/川|かわ|せせらぎ|水が流/, { region: { fx: "flow", dir: "right", area: "water", label: "水が流れる" } }],
+  [/海|うみ|波|なみ|湖|みずうみ|水面/, { region: { fx: "wave", dir: "right", area: "water", label: "水面がゆれる" } }],
+  [/雲|くも|空が/, { region: { fx: "flow", dir: "right", area: "sky", label: "雲が流れる" } }],
+  [/髪|かみ|なびく|なびか|風|かぜ|揺れ|ゆれ|木|草|葉っぱ|はっぱ|旗|はた|カーテン/, { region: { fx: "sway", area: "paint", label: "風でゆれる" } }],
+  [/炎|ほのお|火|ろうそく|キャンドル|たき火|焚き火|ゆらめ/, { region: { fx: "flicker", area: "paint", label: "炎がゆらめく" } }],
+  [/湯気|ゆげ|煙|けむり|けむ|コーヒー|ラーメン/, { region: { fx: "rise", area: "paint", label: "湯気が立ちのぼる" } }],
+  [/立体|飛び出|とびだ|3D|３Ｄ|奥行|おくゆき|浮き出/, { parallax: true }],
+];
+
+// 写真の中の人を「動かす」たぐいの願い(このアプリでは写真の中身は描き直せない)
+const CANNOT = /まばたき|瞬き|目を閉|口を|しゃべ|喋|話す|笑う|笑わせ|踊|おど|歩|あるか|走|はし|手を振|振り向|うなず|表情|顔を動|動物を動|ジャンプ/;
+
+function parseWish(text = "") {
+  const fx = { particles: [], grade: null, rays: false, camera: null, speed: 1, regions: [], parallax: false, cannot: false, amount: 1 };
+  const s = text.replace(/\s+/g, "");
+  if (!s) return fx;
+  for (const [re, add] of RULES) {
+    if (!re.test(s)) continue;
+    if (add.particles) for (const p of add.particles) if (!fx.particles.includes(p)) fx.particles.push(p);
+    if (add.grade && !fx.grade) fx.grade = add.grade;
+    if (add.rays) fx.rays = true;
+    if (add.camera && !fx.camera) fx.camera = add.camera;
+    if (add.speed) fx.speed = add.speed;
+    if (add.region && !fx.regions.some((r) => r.fx === add.region.fx)) fx.regions.push({ ...add.region });
+    if (add.parallax) fx.parallax = true;
+  }
+  if (/たくさん|いっぱい|大量|めっちゃ|すごく/.test(s)) fx.amount = 1.7;
+  if (/少し|すこし|ちょっと|控えめ|ひかえめ|ほんのり/.test(s)) fx.amount = 0.55;
+  fx.cannot = CANNOT.test(s);
+  return fx;
+}
+
+// 読み取った内容を、人が読める言葉の一覧にする
+function describe(fx, names) {
+  const out = [];
+  for (const p of fx.particles) out.push(names.particles[p]?.name || p);
+  if (fx.grade) out.push(names.grades[fx.grade]?.name || fx.grade);
+  if (fx.rays) out.push("☀️ 光が差す");
+  if (fx.camera) out.push({ zoomIn: "🎥 ゆっくり近づく", zoomOut: "🎥 ゆっくり離れる", panRight: "🎥 右へ", panLeft: "🎥 左へ", panUp: "🎥 見上げる", none: "🎥 カメラ固定" }[fx.camera]);
+  if (fx.speed !== 1) out.push(fx.speed < 1 ? "🐢 ゆっくり" : "🐇 はやめ");
+  if (fx.amount !== 1) out.push(fx.amount > 1 ? "➕ たくさん" : "➖ ひかえめ");
+  for (const r of fx.regions) out.push(`🖌 ${r.label}`);
+  if (fx.parallax) out.push("🧊 立体的に");
+  return out;
+}
+
+// ===== app.js =====
+// 画像から動画メーカー — 画像にゆっくりした動き(ケン・バーンズ効果)と切り替えを付けて動画にする。
+// プレビューも書き出しも同じ drawFrame(t) で描くので、見たまま動画になる。
+
+
+const SIZES = { "9:16": [1080, 1920], "1:1": [1080, 1080], "16:9": [1920, 1080] };
+const MOTIONS = ["zoomIn", "panRight", "zoomOut", "panLeft", "panUp"];
+const MOTION_NAMES = { auto: "全体の設定", zoomIn: "ズームイン", zoomOut: "ズームアウト", panLeft: "左へ", panRight: "右へ", panUp: "上へ", none: "止める" };
+const TRANS = 0.7; // 切り替えにかける秒数
+const FPS = 30;
+
+const $ = (s) => document.querySelector(s);
+const canvas = $("#canvas");
+const ctx = canvas.getContext("2d");
+let toastTimer;
+function toast(msg) {
+  const el = $("#toast");
+  el.textContent = msg;
+  el.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove("show"), 2200);
+}
+const esc = (s = "") => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+
+// slides: { img, url, caption, motion, blurBg(キャンバス) }
+const slides = [];
+const opt = { aspect: "9:16", fit: "contain", motion: "auto", transition: "fade", dur: 3, sparkle: false, vol: 0.8, wish: "" };
+let bgm = null; // { buffer, name }
+
+// ---------- 画像の読み込み ----------
+async function addFiles(files) {
+  for (const f of files) {
+    if (!f.type.startsWith("image/")) continue;
+    const url = URL.createObjectURL(f);
+    const img = new Image();
+    img.src = url;
+    try {
+      await img.decode();
+    } catch {
+      toast(`${f.name} は読み込めませんでした`);
+      continue;
+    }
+    slides.push({ img, url, caption: "", wish: "", motion: "auto", blurBg: null });
+  }
+  resize();
+  renderSlides();
+  drawFrame(0);
+}
+
+$("#files").onchange = (e) => addFiles(e.target.files);
+const drop = $("#drop");
+drop.ondragover = (e) => {
+  e.preventDefault();
+  drop.classList.add("over");
+};
+drop.ondragleave = () => drop.classList.remove("over");
+drop.ondrop = (e) => {
+  e.preventDefault();
+  drop.classList.remove("over");
+  addFiles(e.dataTransfer.files);
+};
+
+function renderSlides() {
+  $("#slides").innerHTML = slides
+    .map(
+      (s, i) => `<div class="slide" data-i="${i}">
+        <img src="${s.url}" alt="">
+        <div>
+          <input data-k="caption" placeholder="文字を入れる(任意)" maxlength="40" value="${esc(s.caption)}">
+          <input data-k="wish" placeholder="この写真だけのお願い(任意)" maxlength="80" value="${esc(s.wish)}">
+          <select data-k="motion">${Object.entries(MOTION_NAMES)
+            .map(([k, v]) => `<option value="${k}" ${k === s.motion ? "selected" : ""}>動き:${v}</option>`)
+            .join("")}</select>
+        </div>
+        <div class="ops"><button data-op="up" aria-label="上へ">▲</button><button data-op="down" aria-label="下へ">▼</button><button data-op="del" aria-label="削除">✕</button></div>
+      </div>`,
+    )
+    .join("");
+  updateTime();
+}
+
+$("#slides").addEventListener("input", (e) => {
+  const i = Number(e.target.closest(".slide")?.dataset.i);
+  if (Number.isNaN(i) || !e.target.dataset.k) return;
+  slides[i][e.target.dataset.k] = e.target.value;
+  if (!playing) drawFrame(slideStart(i) + Math.min(1, opt.dur / 2));
+});
+$("#slides").addEventListener("click", (e) => {
+  const op = e.target.dataset.op;
+  if (!op) return;
+  const i = Number(e.target.closest(".slide").dataset.i);
+  if (op === "del") {
+    URL.revokeObjectURL(slides[i].url);
+    slides.splice(i, 1);
+  } else {
+    const j = op === "up" ? i - 1 : i + 1;
+    if (j < 0 || j >= slides.length) return;
+    [slides[i], slides[j]] = [slides[j], slides[i]];
+  }
+  renderSlides();
+  drawFrame(0);
+});
+
+// ---------- 設定 ----------
+for (const id of ["aspect", "fit", "motion", "transition"]) {
+  $(`#${id}`).onchange = (e) => {
+    opt[id] = e.target.value;
+    if (id === "aspect") {
+      resize();
+      slides.forEach((s) => (s.blurBg = null));
+    }
+    drawFrame(currentT);
+  };
+}
+$("#dur").oninput = (e) => {
+  opt.dur = Number(e.target.value);
+  $("#durVal").textContent = `${opt.dur} 秒`;
+  updateTime();
+  drawFrame(currentT);
+};
+$("#sparkle").onchange = (e) => {
+  opt.sparkle = e.target.checked;
+  drawFrame(currentT);
+};
+$("#vol").oninput = (e) => {
+  opt.vol = Number(e.target.value);
+  $("#volVal").textContent = `${Math.round(opt.vol * 100)}%`;
+};
+$("#bgm").onchange = async (e) => {
+  const f = e.target.files[0];
+  if (!f) return;
+  try {
+    const ac = new AudioContext();
+    bgm = { buffer: await ac.decodeAudioData(await f.arrayBuffer()), name: f.name };
+    ac.close();
+    $("#bgmName").textContent = `🎵 ${f.name}`;
+  } catch {
+    toast("この音楽ファイルは読み込めませんでした");
+  }
+};
+
+function resize() {
+  const [w, h] = SIZES[opt.aspect];
+  canvas.width = w;
+  canvas.height = h;
+}
+
+// ---------- タイミング ----------
+// 各スライドは opt.dur 秒。切り替えの TRANS 秒は前後のスライドが重なる
+const slideStart = (i) => i * (opt.dur - TRANS);
+const totalTime = () => (slides.length ? slides.length * (opt.dur - TRANS) + TRANS : 0);
+const ease = (x) => x * x * (3 - 2 * x); // なめらかに動き出して止まる
+
+function updateTime() {
+  $("#timeLabel").textContent = `${currentT.toFixed(1)} / ${totalTime().toFixed(1)} 秒`;
+  $("#seek").style.width = `${totalTime() ? (currentT / totalTime()) * 100 : 0}%`;
+  $("#exportNote").textContent = slides.length
+    ? `書き出しには動画と同じ時間(約${Math.ceil(totalTime())}秒)かかります。書き出し中はこのタブを開いたままにしてください。`
+    : "";
+}
+
+// ---------- 描画 ----------
+// 背景用のぼかし画像は1枚につき1回だけ作る(毎フレームぼかすと重いため)
+function blurBgOf(s) {
+  if (s.blurBg) return s.blurBg;
+  const W = canvas.width / 4;
+  const H = canvas.height / 4;
+  const c = document.createElement("canvas");
+  c.width = W;
+  c.height = H;
+  const g = c.getContext("2d");
+  const sc = Math.max(W / s.img.width, H / s.img.height) * 1.1;
+  g.filter = "blur(8px) brightness(0.6)";
+  g.drawImage(s.img, (W - s.img.width * sc) / 2, (H - s.img.height * sc) / 2, s.img.width * sc, s.img.height * sc);
+  return (s.blurBg = c);
+}
+
+// この写真にかける効果(写真ごとのお願いがあればそれ、なければ全体のお願い)
+const fxCache = new Map();
+function fxOf(i) {
+  const text = (slides[i].wish || opt.wish || "").trim();
+  if (!fxCache.has(text)) fxCache.set(text, parseWish(text));
+  const fx = fxCache.get(text);
+  if (opt.sparkle && !fx.particles.includes("glow")) return { ...fx, particles: [...fx.particles, "glow"] };
+  return fx;
+}
+
+function motionOf(i) {
+  if (slides[i].motion !== "auto") return slides[i].motion;
+  const cam = fxOf(i).camera;
+  if (cam) return cam;
+  return opt.motion === "auto" ? MOTIONS[i % MOTIONS.length] : opt.motion;
+}
+
+// 1枚の画像を、そのスライド内の進み具合 p(0〜1) に合わせて描く
+function drawSlide(i, p, extraScale = 1) {
+  const s = slides[i];
+  const W = canvas.width;
+  const H = canvas.height;
+  const e = ease(Math.min(1, Math.max(0, p)));
+  const sp = fxOf(i).speed; // ゆっくり=動きを小さく、はやめ=大きく
+  let zoom = 1.08;
+  let dx = 0;
+  let dy = 0;
+  switch (motionOf(i)) {
+    case "zoomIn": zoom = 1 + 0.15 * sp * e; break;
+    case "zoomOut": zoom = 1 + 0.15 * sp * (1 - e); break;
+    case "panLeft": zoom = 1.15; dx = (0.5 - e) * Math.min(1, sp); break;
+    case "panRight": zoom = 1.15; dx = (e - 0.5) * Math.min(1, sp); break;
+    case "panUp": zoom = 1.15; dy = (0.5 - e) * Math.min(1, sp); break;
+    case "none": zoom = 1; break;
+  }
+  zoom *= extraScale;
+  const iw = s.img.width;
+  const ih = s.img.height;
+  const base = opt.fit === "cover" ? Math.max(W / iw, H / ih) : Math.min(W / iw, H / ih);
+  if (opt.fit === "contain") ctx.drawImage(blurBgOf(s), 0, 0, W, H);
+  const dw = iw * base * zoom;
+  const dh = ih * base * zoom;
+  // はみ出している分の範囲で左右・上下に流す
+  const ox = Math.max(0, dw - W) * dx;
+  const oy = Math.max(0, dh - H) * dy;
+  const f = filterOf(fxOf(i).grade);
+  if (f !== "none") ctx.filter = f;
+  ctx.drawImage(s.img, (W - dw) / 2 + ox, (H - dh) / 2 + oy, dw, dh);
+  ctx.filter = "none";
+}
+
+// 写真にかける雰囲気と、舞うもの。alpha: 切り替え中の重なり具合
+function drawFx(i, t, alpha) {
+  if (alpha <= 0) return;
+  const W = canvas.width;
+  const H = canvas.height;
+  const fx = fxOf(i);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  drawGrade(ctx, fx.grade, W, H, t);
+  if (fx.rays) drawRays(ctx, W, H, t);
+  for (const p of fx.particles) drawParticles(ctx, p, t * (0.6 + 0.4 * fx.speed), W, H, fx.amount);
+  ctx.restore();
+}
+
+function drawCaption(text, alpha) {
+  if (!text || alpha <= 0) return;
+  const W = canvas.width;
+  const H = canvas.height;
+  const size = Math.round(Math.min(W, H) * 0.065);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  ctx.font = `800 ${size}px "Hiragino Sans", "Noto Sans JP", "Yu Gothic UI", sans-serif`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.lineJoin = "round";
+  const lines = wrap(text, W * 0.86);
+  const y0 = H * (opt.aspect === "9:16" ? 0.78 : 0.84) - ((lines.length - 1) * size * 1.3) / 2;
+  lines.forEach((l, k) => {
+    const y = y0 + k * size * 1.3 + (1 - alpha) * size * 0.4;
+    ctx.lineWidth = size * 0.18;
+    ctx.strokeStyle = "rgba(0,0,0,0.85)";
+    ctx.strokeText(l, W / 2, y);
+    ctx.fillStyle = "#fff";
+    ctx.fillText(l, W / 2, y);
+  });
+  ctx.restore();
+}
+
+function wrap(text, maxWidth) {
+  const lines = [];
+  let line = "";
+  for (const ch of text) {
+    if (ctx.measureText(line + ch).width > maxWidth && line) {
+      lines.push(line);
+      line = ch;
+    } else line += ch;
+  }
+  if (line) lines.push(line);
+  return lines.slice(0, 3);
+}
+
+function drawFrame(t) {
+  const W = canvas.width;
+  const H = canvas.height;
+  ctx.fillStyle = "#000";
+  ctx.fillRect(0, 0, W, H);
+  if (!slides.length) {
+    ctx.fillStyle = "#666";
+    ctx.font = `700 ${Math.round(W * 0.05)}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.fillText("画像を入れるとここに表示されます", W / 2, H / 2);
+    return;
+  }
+  const step = opt.dur - TRANS;
+  const i = Math.min(slides.length - 1, Math.floor(t / step));
+  const local = t - slideStart(i);
+  const p = local / opt.dur;
+  drawSlide(i, p);
+
+  // 次のスライドへの切り替え
+  const next = i + 1;
+  const q = (local - step) / TRANS; // 0〜1 で切り替え中
+  let captionAlpha = Math.min(1, local / 0.5);
+  if (next < slides.length && q > 0) {
+    const qe = ease(Math.min(1, q));
+    const pNext = (local - step) / opt.dur;
+    switch (opt.transition) {
+      case "fade":
+        ctx.globalAlpha = qe;
+        drawSlide(next, pNext);
+        ctx.globalAlpha = 1;
+        break;
+      case "slide":
+        ctx.save();
+        ctx.translate(-W * qe, 0);
+        drawSlide(i, p);
+        ctx.translate(W, 0);
+        drawSlide(next, pNext);
+        ctx.restore();
+        break;
+      case "zoom":
+        ctx.globalAlpha = qe;
+        drawSlide(next, pNext, 1.25 - 0.25 * qe);
+        ctx.globalAlpha = 1;
+        break;
+      case "flash":
+        if (qe >= 0.5) drawSlide(next, pNext);
+        ctx.fillStyle = `rgba(255,255,255,${1 - Math.abs(qe - 0.5) * 2})`;
+        ctx.fillRect(0, 0, W, H);
+        break;
+      default:
+        if (qe >= 0.5) drawSlide(next, pNext);
+    }
+    drawFx(i, t, 1 - qe);
+    drawFx(next, t, qe);
+    captionAlpha = 1 - qe;
+    drawCaption(slides[i].caption, captionAlpha);
+    drawCaption(slides[next].caption, qe);
+  } else {
+    drawFx(i, t, 1);
+    drawCaption(slides[i].caption, captionAlpha);
+  }
+  // 最後は0.4秒かけて暗くして終わる
+  const fadeOut = (t - (totalTime() - 0.4)) / 0.4;
+  if (fadeOut > 0) {
+    ctx.fillStyle = `rgba(0,0,0,${Math.min(1, fadeOut)})`;
+    ctx.fillRect(0, 0, W, H);
+  }
+}
+
+// ---------- 再生 ----------
+let currentT = 0;
+let playing = null; // { start, raf, audio }
+
+function play({ onEnd, audioDest } = {}) {
+  stop();
+  const total = totalTime();
+  const audio = startBgm(audioDest);
+  const t0 = performance.now();
+  const tick = () => {
+    currentT = Math.min(total, (performance.now() - t0) / 1000);
+    drawFrame(currentT);
+    updateTime();
+    if (currentT >= total) {
+      stop();
+      onEnd?.();
+      return;
+    }
+    playing.raf = requestAnimationFrame(tick);
+  };
+  playing = { raf: requestAnimationFrame(tick), audio };
+  $("#play").textContent = "■ 停止";
+}
+
+function stop() {
+  if (!playing) return;
+  cancelAnimationFrame(playing.raf);
+  playing.audio?.stop();
+  playing = null;
+  $("#play").textContent = "▶ プレビュー";
+}
+
+// BGM を鳴らす。書き出し時は録画用の出力にもつなぐ
+function startBgm(audioDest) {
+  if (!bgm) return null;
+  const ac = audioDest?.context || new AudioContext();
+  const src = new AudioBufferSourceNode(ac, { buffer: bgm.buffer, loop: true });
+  const gain = new GainNode(ac, { gain: opt.vol });
+  const total = totalTime();
+  // 最後の1.5秒で音を小さくして終える
+  gain.gain.setValueAtTime(opt.vol, ac.currentTime + Math.max(0, total - 1.5));
+  gain.gain.linearRampToValueAtTime(0, ac.currentTime + total);
+  src.connect(gain).connect(audioDest || ac.destination);
+  src.start();
+  return {
+    stop() {
+      try {
+        src.stop();
+      } catch {}
+      if (!audioDest) ac.close();
+    },
+  };
+}
+
+$("#play").onclick = () => {
+  if (!slides.length) return toast("先に画像を入れてください");
+  if (playing) return stop();
+  play({ onEnd: () => {} });
+};
+$(".bar").onclick = (e) => {
+  if (playing || !slides.length) return;
+  const r = e.currentTarget.getBoundingClientRect();
+  currentT = ((e.clientX - r.left) / r.width) * totalTime();
+  drawFrame(currentT);
+  updateTime();
+};
+
+// ---------- 書き出し ----------
+function pickMime() {
+  const cands = ["video/mp4;codecs=avc1,mp4a.40.2", "video/mp4", "video/webm;codecs=vp9,opus", "video/webm"];
+  return cands.find((m) => MediaRecorder.isTypeSupported(m)) || "";
+}
+
+$("#export").onclick = async () => {
+  if (!slides.length) return toast("先に画像を入れてください");
+  const btn = $("#export");
+  btn.disabled = true;
+  $("#play").disabled = true;
+  btn.textContent = "書き出し中…";
+  const mime = pickMime();
+  const stream = canvas.captureStream(FPS);
+  let ac = null;
+  let audioDest = null;
+  if (bgm) {
+    ac = new AudioContext();
+    audioDest = ac.createMediaStreamDestination();
+    audioDest.stream.getAudioTracks().forEach((tr) => stream.addTrack(tr));
+  }
+  const rec = new MediaRecorder(stream, { mimeType: mime || undefined, videoBitsPerSecond: 8_000_000 });
+  const chunks = [];
+  rec.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+  const done = new Promise((r) => (rec.onstop = r));
+  rec.start(500);
+  play({ audioDest: audioDest || undefined, onEnd: () => setTimeout(() => rec.stop(), 200) });
+  await done;
+  ac?.close();
+  const type = rec.mimeType || mime || "video/webm";
+  const blob = new Blob(chunks, { type });
+  const url = URL.createObjectURL(blob);
+  const ext = type.includes("mp4") ? "mp4" : "webm";
+  $("#result").innerHTML = `<video controls playsinline src="${url}"></video><a href="${url}" download="video-${Date.now()}.${ext}">⬇ ${ext.toUpperCase()} を保存(${(blob.size / 1e6).toFixed(1)}MB)</a>
+    ${ext === "webm" ? `<p class="hint center">このブラウザは MP4 で保存できないため WebM で保存します。TikTok などが WebM を受け付けない場合は、最新の Chrome / Edge で書き出すと MP4 になります。</p>` : ""}`;
+  btn.disabled = false;
+  $("#play").disabled = false;
+  btn.textContent = "⬇ 動画を書き出す";
+  toast("書き出しました");
+};
+
+// ---------- お願い ----------
+const EXAMPLES = ["桜が舞って夕焼けっぽく、ゆっくり近づいて", "雪が降る静かな夜", "誕生日のお祝い!紙吹雪いっぱい", "昔の思い出みたいにフィルム風", "星空と流れ星", "光が差して夢のようにふんわり", "花火が上がる夏の夜", "雨がしとしと降るエモい感じ"];
+function renderWish() {
+  const fx = parseWish(opt.wish);
+  const items = describe(fx, { particles: PARTICLES, grades: GRADES });
+  $("#wishChips").innerHTML = items.map((x) => `<span class="chip">${esc(x)}</span>`).join("");
+  const notes = [];
+  if (opt.wish.trim() && !items.length && !fx.cannot) notes.push("読み取れる言葉がありませんでした。下の例を押すか、「桜」「雪」「夕焼け」「近づいて」などの言葉を入れてみてください。");
+  if (fx.regions.length) notes.push("🖌 写真の一部を動かす効果は、次の改良で「なぞって場所を決める」機能と一緒に使えるようになります。");
+  if (fx.cannot) notes.push("🙇 写真の中の人や動物の体を動かす(まばたき・口・歩く など)は、写真を描き直すAIが必要なため、このアプリではできません。そのぶん、まわりの雰囲気でかなえます。");
+  $("#wishNote").textContent = notes.join(" ");
+}
+$("#wish").addEventListener("input", (e) => {
+  opt.wish = e.target.value;
+  renderWish();
+  if (!playing) drawFrame(currentT);
+});
+$("#wishExamples").innerHTML = EXAMPLES.map((x) => `<button class="btn small" type="button">${esc(x)}</button>`).join("");
+$("#wishExamples").onclick = (e) => {
+  if (e.target.tagName !== "BUTTON") return;
+  $("#wish").value = opt.wish = e.target.textContent;
+  renderWish();
+  if (!playing) drawFrame(currentT);
+};
+
+// ---------- 起動 ----------
+resize();
+$("#durVal").textContent = `${opt.dur} 秒`;
+$("#volVal").textContent = `${Math.round(opt.vol * 100)}%`;
+renderWish();
+drawFrame(0);
+updateTime();
+
+</script>
+</body>
+</html>

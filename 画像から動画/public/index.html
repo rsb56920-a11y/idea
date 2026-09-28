@@ -5,12 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <meta name="theme-color" content="#0f1115" />
   <title>画像から動画メーカー</title>
-  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <div id="app">
     <header>
-      <h1>🎬 画像から動画メーカー</h1>
+      <h1>🎬 画像から動画メーカー <small>ユメウゴキ</small></h1>
       <p class="muted">写真を入れるだけで、ゆっくり動くおしゃれな動画に。TikTok・リール・ショート向けの縦動画も作れます。画像はこのパソコンの中だけで処理します。</p>
     </header>
 
@@ -25,8 +25,17 @@
           <div id="slides"></div>
         </div>
 
+        <div class="card wish">
+          <h2>② ✨ お願いを書く(かなえます)</h2>
+          <p class="hint">どんな動画にしたいか、ふつうの言葉で書いてください。例:「桜が舞って、夕焼けっぽく、ゆっくり近づいて」「雪が降る夜にして」「誕生日のお祝い」「雲が流れて光が差す」</p>
+          <textarea id="wish" rows="2" placeholder="例:桜がたくさん舞って、夢のようにふんわり"></textarea>
+          <div class="chips" id="wishChips"></div>
+          <p class="hint" id="wishNote"></p>
+          <div class="examples" id="wishExamples"></div>
+        </div>
+
         <div class="card">
-          <h2>② 動画の形と動き</h2>
+          <h2>③ 動画の形と動き</h2>
           <label>サイズ
             <select id="aspect">
               <option value="9:16">縦 9:16(TikTok・リール・ショート)</option>
@@ -62,7 +71,7 @@
         </div>
 
         <div class="card">
-          <h2>③ 音楽(任意)</h2>
+          <h2>④ 音楽(任意)</h2>
           <label class="btn file">🎵 音楽ファイルを選ぶ<input type="file" id="bgm" accept="audio/*" hidden /></label>
           <p class="muted" id="bgmName">音楽なし</p>
           <label>音量 <b id="volVal"></b><input type="range" id="vol" min="0" max="1" step="0.05" value="0.8" /></label>
@@ -84,6 +93,6 @@
     </div>
   </div>
   <div id="toast" role="status"></div>
-  <script type="module" src="/app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>

@@ -1,6 +1,9 @@
 // 画像から動画メーカー — 画像にゆっくりした動き(ケン・バーンズ効果)と切り替えを付けて動画にする。
 // プレビューも書き出しも同じ drawFrame(t) で描くので、見たまま動画になる。
 
+import { PARTICLES, GRADES, drawParticles, drawGrade, drawRays, filterOf } from "./effects.js";
+import { parseWish, describe } from "./wish.js";
+
 const SIZES = { "9:16": [1080, 1920], "1:1": [1080, 1080], "16:9": [1920, 1080] };
 const MOTIONS = ["zoomIn", "panRight", "zoomOut", "panLeft", "panUp"];
 const MOTION_NAMES = { auto: "全体の設定", zoomIn: "ズームイン", zoomOut: "ズームアウト", panLeft: "左へ", panRight: "右へ", panUp: "上へ", none: "止める" };
@@ -22,7 +25,7 @@ const esc = (s = "") => String(s).replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<
 
 // slides: { img, url, caption, motion, blurBg(キャンバス) }
 const slides = [];
-const opt = { aspect: "9:16", fit: "contain", motion: "auto", transition: "fade", dur: 3, sparkle: false, vol: 0.8 };
+const opt = { aspect: "9:16", fit: "contain", motion: "auto", transition: "fade", dur: 3, sparkle: false, vol: 0.8, wish: "" };
 let bgm = null; // { buffer, name }
 
 // ---------- 画像の読み込み ----------
@@ -38,7 +41,7 @@ async function addFiles(files) {
       toast(`${f.name} は読み込めませんでした`);
       continue;
     }
-    slides.push({ img, url, caption: "", motion: "auto", blurBg: null });
+    slides.push({ img, url, caption: "", wish: "", motion: "auto", blurBg: null });
   }
   resize();
   renderSlides();
@@ -65,6 +68,7 @@ function renderSlides() {
         <img src="${s.url}" alt="">
         <div>
           <input data-k="caption" placeholder="文字を入れる(任意)" maxlength="40" value="${esc(s.caption)}">
+          <input data-k="wish" placeholder="この写真だけのお願い(任意)" maxlength="80" value="${esc(s.wish)}">
           <select data-k="motion">${Object.entries(MOTION_NAMES)
             .map(([k, v]) => `<option value="${k}" ${k === s.motion ? "selected" : ""}>動き:${v}</option>`)
             .join("")}</select>
@@ -172,9 +176,21 @@ function blurBgOf(s) {
   return (s.blurBg = c);
 }
 
+// この写真にかける効果(写真ごとのお願いがあればそれ、なければ全体のお願い)
+const fxCache = new Map();
+function fxOf(i) {
+  const text = (slides[i].wish || opt.wish || "").trim();
+  if (!fxCache.has(text)) fxCache.set(text, parseWish(text));
+  const fx = fxCache.get(text);
+  if (opt.sparkle && !fx.particles.includes("glow")) return { ...fx, particles: [...fx.particles, "glow"] };
+  return fx;
+}
+
 function motionOf(i) {
-  const m = slides[i].motion !== "auto" ? slides[i].motion : opt.motion;
-  return m === "auto" ? MOTIONS[i % MOTIONS.length] : m;
+  if (slides[i].motion !== "auto") return slides[i].motion;
+  const cam = fxOf(i).camera;
+  if (cam) return cam;
+  return opt.motion === "auto" ? MOTIONS[i % MOTIONS.length] : opt.motion;
 }
 
 // 1枚の画像を、そのスライド内の進み具合 p(0〜1) に合わせて描く
@@ -183,15 +199,16 @@ function drawSlide(i, p, extraScale = 1) {
   const W = canvas.width;
   const H = canvas.height;
   const e = ease(Math.min(1, Math.max(0, p)));
+  const sp = fxOf(i).speed; // ゆっくり=動きを小さく、はやめ=大きく
   let zoom = 1.08;
   let dx = 0;
   let dy = 0;
   switch (motionOf(i)) {
-    case "zoomIn": zoom = 1 + 0.15 * e; break;
-    case "zoomOut": zoom = 1.15 - 0.15 * e; break;
-    case "panLeft": zoom = 1.15; dx = 0.5 - e; break;
-    case "panRight": zoom = 1.15; dx = e - 0.5; break;
-    case "panUp": zoom = 1.15; dy = 0.5 - e; break;
+    case "zoomIn": zoom = 1 + 0.15 * sp * e; break;
+    case "zoomOut": zoom = 1 + 0.15 * sp * (1 - e); break;
+    case "panLeft": zoom = 1.15; dx = (0.5 - e) * Math.min(1, sp); break;
+    case "panRight": zoom = 1.15; dx = (e - 0.5) * Math.min(1, sp); break;
+    case "panUp": zoom = 1.15; dy = (0.5 - e) * Math.min(1, sp); break;
     case "none": zoom = 1; break;
   }
   zoom *= extraScale;
@@ -204,7 +221,24 @@ function drawSlide(i, p, extraScale = 1) {
   // はみ出している分の範囲で左右・上下に流す
   const ox = Math.max(0, dw - W) * dx;
   const oy = Math.max(0, dh - H) * dy;
+  const f = filterOf(fxOf(i).grade);
+  if (f !== "none") ctx.filter = f;
   ctx.drawImage(s.img, (W - dw) / 2 + ox, (H - dh) / 2 + oy, dw, dh);
+  ctx.filter = "none";
+}
+
+// 写真にかける雰囲気と、舞うもの。alpha: 切り替え中の重なり具合
+function drawFx(i, t, alpha) {
+  if (alpha <= 0) return;
+  const W = canvas.width;
+  const H = canvas.height;
+  const fx = fxOf(i);
+  ctx.save();
+  ctx.globalAlpha = alpha;
+  drawGrade(ctx, fx.grade, W, H, t);
+  if (fx.rays) drawRays(ctx, W, H, t);
+  for (const p of fx.particles) drawParticles(ctx, p, t * (0.6 + 0.4 * fx.speed), W, H, fx.amount);
+  ctx.restore();
 }
 
 function drawCaption(text, alpha) {
@@ -242,32 +276,6 @@ function wrap(text, maxWidth) {
   }
   if (line) lines.push(line);
   return lines.slice(0, 3);
-}
-
-// キラキラ: 時間 t から位置が決まるので、プレビューと書き出しで同じになる
-function drawSparkles(t) {
-  const W = canvas.width;
-  const H = canvas.height;
-  ctx.save();
-  ctx.globalCompositeOperation = "lighter";
-  for (let k = 0; k < 40; k++) {
-    const seed = Math.sin(k * 12.9898) * 43758.5453;
-    const r1 = seed - Math.floor(seed);
-    const r2 = (seed * 7.13) % 1;
-    const speed = 0.03 + r2 * 0.05;
-    const x = (r1 * W + Math.sin(t * 0.8 + k) * W * 0.02) % W;
-    const y = H - ((((r2 + t * speed) % 1) + 1) % 1) * H;
-    const tw = 0.5 + 0.5 * Math.sin(t * 4 + k * 1.7);
-    const r = (2 + r1 * 5) * (W / 1080);
-    const g = ctx.createRadialGradient(x, y, 0, x, y, r * 4);
-    g.addColorStop(0, `rgba(255,250,220,${0.9 * tw})`);
-    g.addColorStop(1, "rgba(255,250,220,0)");
-    ctx.fillStyle = g;
-    ctx.beginPath();
-    ctx.arc(x, y, r * 4, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  ctx.restore();
 }
 
 function drawFrame(t) {
@@ -322,13 +330,15 @@ function drawFrame(t) {
       default:
         if (qe >= 0.5) drawSlide(next, pNext);
     }
+    drawFx(i, t, 1 - qe);
+    drawFx(next, t, qe);
     captionAlpha = 1 - qe;
     drawCaption(slides[i].caption, captionAlpha);
     drawCaption(slides[next].caption, qe);
   } else {
+    drawFx(i, t, 1);
     drawCaption(slides[i].caption, captionAlpha);
   }
-  if (opt.sparkle) drawSparkles(t);
   // 最後は0.4秒かけて暗くして終わる
   const fadeOut = (t - (totalTime() - 0.4)) / 0.4;
   if (fadeOut > 0) {
@@ -445,9 +455,35 @@ $("#export").onclick = async () => {
   toast("書き出しました");
 };
 
+// ---------- お願い ----------
+const EXAMPLES = ["桜が舞って夕焼けっぽく、ゆっくり近づいて", "雪が降る静かな夜", "誕生日のお祝い!紙吹雪いっぱい", "昔の思い出みたいにフィルム風", "星空と流れ星", "光が差して夢のようにふんわり", "花火が上がる夏の夜", "雨がしとしと降るエモい感じ"];
+function renderWish() {
+  const fx = parseWish(opt.wish);
+  const items = describe(fx, { particles: PARTICLES, grades: GRADES });
+  $("#wishChips").innerHTML = items.map((x) => `<span class="chip">${esc(x)}</span>`).join("");
+  const notes = [];
+  if (opt.wish.trim() && !items.length && !fx.cannot) notes.push("読み取れる言葉がありませんでした。下の例を押すか、「桜」「雪」「夕焼け」「近づいて」などの言葉を入れてみてください。");
+  if (fx.regions.length) notes.push("🖌 写真の一部を動かす効果は、次の改良で「なぞって場所を決める」機能と一緒に使えるようになります。");
+  if (fx.cannot) notes.push("🙇 写真の中の人や動物の体を動かす(まばたき・口・歩く など)は、写真を描き直すAIが必要なため、このアプリではできません。そのぶん、まわりの雰囲気でかなえます。");
+  $("#wishNote").textContent = notes.join(" ");
+}
+$("#wish").addEventListener("input", (e) => {
+  opt.wish = e.target.value;
+  renderWish();
+  if (!playing) drawFrame(currentT);
+});
+$("#wishExamples").innerHTML = EXAMPLES.map((x) => `<button class="btn small" type="button">${esc(x)}</button>`).join("");
+$("#wishExamples").onclick = (e) => {
+  if (e.target.tagName !== "BUTTON") return;
+  $("#wish").value = opt.wish = e.target.textContent;
+  renderWish();
+  if (!playing) drawFrame(currentT);
+};
+
 // ---------- 起動 ----------
 resize();
 $("#durVal").textContent = `${opt.dur} 秒`;
 $("#volVal").textContent = `${Math.round(opt.vol * 100)}%`;
+renderWish();
 drawFrame(0);
 updateTime();
