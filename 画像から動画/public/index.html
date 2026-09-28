@@ -92,6 +92,28 @@
       </section>
     </div>
   </div>
+  <div class="modal" id="editor" hidden>
+    <div class="sheet">
+      <div class="ed-head">
+        <h2>🖌 動かす場所をなぞる</h2>
+        <button class="btn small" id="edClose">✓ 完了</button>
+      </div>
+      <p class="hint">動かしたい所を、指やマウスでなぞってください。なぞった所だけが動きます(ほかは止まったまま=シネマグラフ)。</p>
+      <div class="tools" id="edTools"></div>
+      <div class="ed-row">
+        <label>流れる向き
+          <select id="edDir"><option value="right">→ 右へ</option><option value="left">← 左へ</option><option value="down">↓ 下へ(滝)</option><option value="up">↑ 上へ</option></select></label>
+        <label>筆の太さ <input type="range" id="edSize" min="8" max="120" value="40" /></label>
+      </div>
+      <div class="ed-stage"><canvas id="edCanvas"></canvas></div>
+      <div class="ed-row">
+        <button class="btn small" id="edAutoSky">☁️ 空を自動でさがす</button>
+        <button class="btn small" id="edAutoWater">🌊 水を自動でさがす</button>
+        <button class="btn small" id="edClear">🗑 ぜんぶ消す</button>
+        <button class="btn small" id="edPlay">▶ 動きを見る</button>
+      </div>
+    </div>
+  </div>
   <div id="toast" role="status"></div>
   <script type="module" src="app.js"></script>
 </body>

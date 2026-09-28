@@ -52,3 +52,19 @@ textarea:focus, input:focus, select:focus { outline: 2px solid rgba(249, 115, 22
 .examples { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
 .btn.small { padding: 6px 10px; font-size: 12px; border-radius: 999px; font-weight: 600; }
 .slide input + input { margin-top: 6px; }
+/* ---- なぞる画面 ---- */
+.modal { position: fixed; inset: 0; background: rgba(5, 6, 10, 0.8); display: grid; place-items: center; z-index: 20; padding: 12px; }
+.modal[hidden] { display: none; }
+.sheet { background: var(--card); border: 1px solid var(--line); border-radius: 18px; padding: 16px; width: min(960px, 100%); max-height: 96vh; overflow: auto; }
+.ed-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.ed-head h2 { margin: 0; font-size: 18px; }
+.tools { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.tool { border-color: var(--c) !important; }
+.tool.on { background: var(--c); color: #111; }
+.ed-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; margin: 8px 0; font-size: 13px; }
+.ed-row label { display: flex; align-items: center; gap: 6px; }
+.ed-row select { background: #20242d; border: 1px solid var(--line); border-radius: 8px; padding: 5px; }
+.ed-row input[type="range"] { width: 140px; margin: 0; }
+.ed-stage { display: grid; place-items: center; background: #000; border-radius: 12px; padding: 6px; }
+.ed-stage canvas { max-width: 100%; touch-action: none; cursor: crosshair; border-radius: 6px; }
+.slide .brush { margin-top: 6px; width: 100%; }

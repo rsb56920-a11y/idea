@@ -3,6 +3,7 @@
 
 import { PARTICLES, GRADES, drawParticles, drawGrade, drawRays, filterOf } from "./effects.js";
 import { parseWish, describe } from "./wish.js";
+import { MotionRenderer, REGION_FX, newMasks, hasPaint, autoMask, combineMasks, fxChannel } from "./motion.js";
 
 const SIZES = { "9:16": [1080, 1920], "1:1": [1080, 1080], "16:9": [1920, 1080] };
 const MOTIONS = ["zoomIn", "panRight", "zoomOut", "panLeft", "panUp"];
@@ -29,6 +30,19 @@ const opt = { aspect: "9:16", fit: "contain", motion: "auto", transition: "fade"
 let bgm = null; // { buffer, name }
 
 // ---------- 画像の読み込み ----------
+const WORK_MAX = 1440; // 動かすときに使う写真の大きさ(長い辺)
+function makeSlide(img, url) {
+  const sc = Math.min(1, WORK_MAX / Math.max(img.width, img.height));
+  const work = document.createElement("canvas");
+  work.width = Math.round(img.width * sc);
+  work.height = Math.round(img.height * sc);
+  work.getContext("2d").drawImage(img, 0, 0, work.width, work.height);
+  return {
+    img, url, work, caption: "", wish: "", motion: "auto", blurBg: null,
+    masks: newMasks(img), painted: { flow: false, sway: false, flicker: false, rise: false }, auto: {},
+    maskData: null, maskVer: 0, maskDirty: true, flowDir: null, userDir: false, waveMode: false, active: false,
+  };
+}
 async function addFiles(files) {
   for (const f of files) {
     if (!f.type.startsWith("image/")) continue;
@@ -41,7 +55,7 @@ async function addFiles(files) {
       toast(`${f.name} は読み込めませんでした`);
       continue;
     }
-    slides.push({ img, url, caption: "", wish: "", motion: "auto", blurBg: null });
+    slides.push(makeSlide(img, url));
   }
   resize();
   renderSlides();
@@ -69,6 +83,7 @@ function renderSlides() {
         <div>
           <input data-k="caption" placeholder="文字を入れる(任意)" maxlength="40" value="${esc(s.caption)}">
           <input data-k="wish" placeholder="この写真だけのお願い(任意)" maxlength="80" value="${esc(s.wish)}">
+          <button class="btn small brush" type="button" data-op="brush">🖌 動かす場所をなぞる${Object.values(s.painted).some(Boolean) ? " ✓" : ""}</button>
           <select data-k="motion">${Object.entries(MOTION_NAMES)
             .map(([k, v]) => `<option value="${k}" ${k === s.motion ? "selected" : ""}>動き:${v}</option>`)
             .join("")}</select>
@@ -90,7 +105,9 @@ $("#slides").addEventListener("click", (e) => {
   const op = e.target.dataset.op;
   if (!op) return;
   const i = Number(e.target.closest(".slide").dataset.i);
+  if (op === "brush") return openEditor(i);
   if (op === "del") {
+    motionR.forget?.(slides[i]);
     URL.revokeObjectURL(slides[i].url);
     slides.splice(i, 1);
   } else {
@@ -186,6 +203,38 @@ function fxOf(i) {
   return fx;
 }
 
+// ---------- 写真の一部を動かす ----------
+const motionR = new MotionRenderer();
+// お願い(空・水は自動でさがす)と、なぞった場所から、動かす場所をまとめる
+function prepareMotion(s, fx) {
+  const want = {};
+  for (const r of fx.regions) want[fxChannel(r.fx)] = r;
+  for (const ch of ["flow", "sway", "flicker", "rise"]) {
+    const r = want[ch];
+    const autoArea = r && (r.area === "sky" || r.area === "water") ? r.area : null;
+    if (!s.painted[ch] && s.auto[ch] !== autoArea) {
+      const c = s.masks[ch];
+      c.getContext("2d").clearRect(0, 0, c.width, c.height);
+      if (autoArea) autoMask(s.img, autoArea, c);
+      s.auto[ch] = autoArea;
+      s.maskDirty = true;
+    }
+  }
+  const fr = want.flow;
+  if (!s.userDir && fr) s.flowDir = fr.dir || "right";
+  const wave = !!(fr && fr.fx === "wave");
+  if (!s.userDir && s.waveMode !== wave) s.waveMode = wave;
+  if (s.maskDirty) {
+    s.maskData = combineMasks(s.masks);
+    s.maskVer++;
+    s.maskDirty = false;
+    let any = false;
+    for (let k = 0; k < s.maskData.data.length && !any; k += 8) any = s.maskData.data[k] | s.maskData.data[k + 1] | s.maskData.data[k + 2] | s.maskData.data[k + 3];
+    s.active = !!any;
+  }
+  return s.active && motionR.ok;
+}
+
 function motionOf(i) {
   if (slides[i].motion !== "auto") return slides[i].motion;
   const cam = fxOf(i).camera;
@@ -194,7 +243,7 @@ function motionOf(i) {
 }
 
 // 1枚の画像を、そのスライド内の進み具合 p(0〜1) に合わせて描く
-function drawSlide(i, p, extraScale = 1) {
+function drawSlide(i, p, extraScale = 1, t = currentT) {
   const s = slides[i];
   const W = canvas.width;
   const H = canvas.height;
@@ -221,9 +270,11 @@ function drawSlide(i, p, extraScale = 1) {
   // はみ出している分の範囲で左右・上下に流す
   const ox = Math.max(0, dw - W) * dx;
   const oy = Math.max(0, dh - H) * dy;
-  const f = filterOf(fxOf(i).grade);
+  const fx = fxOf(i);
+  const src = prepareMotion(s, fx) ? motionR.render(s, t, fx.speed) : s.img;
+  const f = filterOf(fx.grade);
   if (f !== "none") ctx.filter = f;
-  ctx.drawImage(s.img, (W - dw) / 2 + ox, (H - dh) / 2 + oy, dw, dh);
+  ctx.drawImage(src, (W - dw) / 2 + ox, (H - dh) / 2 + oy, dw, dh);
   ctx.filter = "none";
 }
 
@@ -294,7 +345,7 @@ function drawFrame(t) {
   const i = Math.min(slides.length - 1, Math.floor(t / step));
   const local = t - slideStart(i);
   const p = local / opt.dur;
-  drawSlide(i, p);
+  drawSlide(i, p, 1, t);
 
   // 次のスライドへの切り替え
   const next = i + 1;
@@ -306,29 +357,29 @@ function drawFrame(t) {
     switch (opt.transition) {
       case "fade":
         ctx.globalAlpha = qe;
-        drawSlide(next, pNext);
+        drawSlide(next, pNext, 1, t);
         ctx.globalAlpha = 1;
         break;
       case "slide":
         ctx.save();
         ctx.translate(-W * qe, 0);
-        drawSlide(i, p);
+        drawSlide(i, p, 1, t);
         ctx.translate(W, 0);
-        drawSlide(next, pNext);
+        drawSlide(next, pNext, 1, t);
         ctx.restore();
         break;
       case "zoom":
         ctx.globalAlpha = qe;
-        drawSlide(next, pNext, 1.25 - 0.25 * qe);
+        drawSlide(next, pNext, 1.25 - 0.25 * qe, t);
         ctx.globalAlpha = 1;
         break;
       case "flash":
-        if (qe >= 0.5) drawSlide(next, pNext);
+        if (qe >= 0.5) drawSlide(next, pNext, 1, t);
         ctx.fillStyle = `rgba(255,255,255,${1 - Math.abs(qe - 0.5) * 2})`;
         ctx.fillRect(0, 0, W, H);
         break;
       default:
-        if (qe >= 0.5) drawSlide(next, pNext);
+        if (qe >= 0.5) drawSlide(next, pNext, 1, t);
     }
     drawFx(i, t, 1 - qe);
     drawFx(next, t, qe);
@@ -455,6 +506,150 @@ $("#export").onclick = async () => {
   toast("書き出しました");
 };
 
+// ---------- なぞる画面 ----------
+const ed = { i: -1, tool: "flow", size: 40, drawing: false, playRaf: 0, t0: 0 };
+const edCanvas = $("#edCanvas");
+const edCtx = edCanvas.getContext("2d");
+$("#edTools").innerHTML =
+  Object.entries(REGION_FX).map(([k, v]) => `<button class="btn small tool" data-tool="${k}" style="--c:rgb(${v.color})">${v.name}</button>`).join("") +
+  `<button class="btn small tool" data-tool="erase" style="--c:#888">🧽 消しゴム</button>`;
+function edTool(k) {
+  ed.tool = k;
+  document.querySelectorAll("#edTools .tool").forEach((b) => b.classList.toggle("on", b.dataset.tool === k));
+}
+$("#edTools").onclick = (e) => e.target.dataset.tool && edTool(e.target.dataset.tool);
+function openEditor(i) {
+  stop();
+  ed.i = i;
+  const s = slides[i];
+  const maxW = Math.min(900, window.innerWidth - 40);
+  const maxH = window.innerHeight * 0.55;
+  const sc = Math.min(maxW / s.img.width, maxH / s.img.height);
+  edCanvas.width = Math.round(s.img.width * sc);
+  edCanvas.height = Math.round(s.img.height * sc);
+  $("#edDir").value = s.flowDir || "right";
+  $("#editor").hidden = false;
+  edTool(ed.tool);
+  edDraw();
+}
+function closeEditor() {
+  edStopPlay();
+  $("#editor").hidden = true;
+  renderSlides();
+  drawFrame(currentT);
+}
+$("#edClose").onclick = closeEditor;
+$("#editor").onclick = (e) => e.target.id === "editor" && closeEditor();
+// 写真の上に、なぞった所を色つきで重ねて見せる
+const tint = document.createElement("canvas");
+function edDraw(frame) {
+  const s = slides[ed.i];
+  const W = edCanvas.width, H = edCanvas.height;
+  edCtx.clearRect(0, 0, W, H);
+  edCtx.drawImage(frame || s.img, 0, 0, W, H);
+  if (frame) return;
+  tint.width = W;
+  tint.height = H;
+  const tg = tint.getContext("2d");
+  for (const [k, v] of Object.entries(REGION_FX)) {
+    const ch = fxChannel(k);
+    if (k === "wave") continue; // 流れると同じ場所
+    tg.globalCompositeOperation = "source-over";
+    tg.clearRect(0, 0, W, H);
+    tg.drawImage(s.masks[ch], 0, 0, W, H);
+    tg.globalCompositeOperation = "source-in";
+    tg.fillStyle = `rgb(${v.color})`;
+    tg.fillRect(0, 0, W, H);
+    edCtx.globalAlpha = 0.5;
+    edCtx.drawImage(tint, 0, 0);
+    edCtx.globalAlpha = 1;
+  }
+}
+function edPaint(e) {
+  const s = slides[ed.i];
+  const r = edCanvas.getBoundingClientRect();
+  const x = ((e.clientX - r.left) / r.width) * s.masks.w;
+  const y = ((e.clientY - r.top) / r.height) * s.masks.h;
+  const rad = (ed.size / r.width) * s.masks.w;
+  const chans = ed.tool === "erase" ? ["flow", "sway", "flicker", "rise"] : [fxChannel(ed.tool)];
+  for (const ch of chans) {
+    const g = s.masks[ch].getContext("2d");
+    g.globalCompositeOperation = ed.tool === "erase" ? "destination-out" : "source-over";
+    const gr = g.createRadialGradient(x, y, 0, x, y, rad);
+    gr.addColorStop(0, "rgba(255,255,255,1)");
+    gr.addColorStop(0.6, "rgba(255,255,255,0.8)");
+    gr.addColorStop(1, "rgba(255,255,255,0)");
+    g.fillStyle = gr;
+    g.beginPath();
+    g.arc(x, y, rad, 0, Math.PI * 2);
+    g.fill();
+    g.globalCompositeOperation = "source-over";
+    s.painted[ch] = ed.tool === "erase" ? hasPaint(s.masks[ch]) || s.painted[ch] : true;
+  }
+  if (ed.tool === "wave" || ed.tool === "flow") {
+    s.waveMode = ed.tool === "wave";
+    s.userDir = true;
+  }
+  s.maskDirty = true;
+  if (!ed.playRaf) edDraw();
+}
+edCanvas.addEventListener("pointerdown", (e) => {
+  ed.drawing = true;
+  edCanvas.setPointerCapture(e.pointerId);
+  edPaint(e);
+});
+edCanvas.addEventListener("pointermove", (e) => ed.drawing && edPaint(e));
+edCanvas.addEventListener("pointerup", () => (ed.drawing = false));
+$("#edSize").oninput = (e) => (ed.size = Number(e.target.value));
+$("#edDir").onchange = (e) => {
+  const s = slides[ed.i];
+  s.flowDir = e.target.value;
+  s.userDir = true;
+};
+$("#edClear").onclick = () => {
+  const s = slides[ed.i];
+  for (const ch of ["flow", "sway", "flicker", "rise"]) {
+    s.masks[ch].getContext("2d").clearRect(0, 0, s.masks.w, s.masks.h);
+    s.painted[ch] = true; // 自動でさがした所も消したままにする
+  }
+  s.maskDirty = true;
+  edDraw();
+};
+function edAuto(area) {
+  const s = slides[ed.i];
+  autoMask(s.img, area, s.masks.flow);
+  s.painted.flow = true;
+  s.waveMode = area === "water";
+  s.userDir = true;
+  s.maskDirty = true;
+  edTool(area === "water" ? "wave" : "flow");
+  edDraw();
+  if (!hasPaint(s.masks.flow)) toast(area === "sky" ? "空が見つかりませんでした。なぞって決めてください" : "水が見つかりませんでした。なぞって決めてください");
+}
+$("#edAutoSky").onclick = () => edAuto("sky");
+$("#edAutoWater").onclick = () => edAuto("water");
+function edStopPlay() {
+  cancelAnimationFrame(ed.playRaf);
+  ed.playRaf = 0;
+  $("#edPlay").textContent = "▶ 動きを見る";
+}
+$("#edPlay").onclick = () => {
+  if (ed.playRaf) {
+    edStopPlay();
+    return edDraw();
+  }
+  ed.t0 = performance.now();
+  $("#edPlay").textContent = "■ なぞる画面にもどる";
+  const tick = () => {
+    const s = slides[ed.i];
+    const fx = fxOf(ed.i);
+    if (prepareMotion(s, fx)) edDraw(motionR.render(s, (performance.now() - ed.t0) / 1000, fx.speed));
+    else edDraw(s.img);
+    ed.playRaf = requestAnimationFrame(tick);
+  };
+  tick();
+};
+
 // ---------- お願い ----------
 const EXAMPLES = ["桜が舞って夕焼けっぽく、ゆっくり近づいて", "雪が降る静かな夜", "誕生日のお祝い!紙吹雪いっぱい", "昔の思い出みたいにフィルム風", "星空と流れ星", "光が差して夢のようにふんわり", "花火が上がる夏の夜", "雨がしとしと降るエモい感じ"];
 function renderWish() {
@@ -463,7 +658,10 @@ function renderWish() {
   $("#wishChips").innerHTML = items.map((x) => `<span class="chip">${esc(x)}</span>`).join("");
   const notes = [];
   if (opt.wish.trim() && !items.length && !fx.cannot) notes.push("読み取れる言葉がありませんでした。下の例を押すか、「桜」「雪」「夕焼け」「近づいて」などの言葉を入れてみてください。");
-  if (fx.regions.length) notes.push("🖌 写真の一部を動かす効果は、次の改良で「なぞって場所を決める」機能と一緒に使えるようになります。");
+  const needPaint = fx.regions.filter((r) => r.area === "paint");
+  if (needPaint.length) notes.push(`🖌 「${needPaint.map((r) => r.label).join("・")}」は、写真の横の「🖌 動かす場所をなぞる」で、動かしたい所をなぞってください。`);
+  if (fx.regions.some((r) => r.area !== "paint")) notes.push("☁️ 空・水は自動でさがして動かします(うまくいかない時は、なぞって直せます)。");
+  if (!motionR.ok && fx.regions.length) notes.push("⚠️ このブラウザは写真の一部を動かす機能(WebGL2)に対応していません。Chrome か Edge を使ってください。");
   if (fx.cannot) notes.push("🙇 写真の中の人や動物の体を動かす(まばたき・口・歩く など)は、写真を描き直すAIが必要なため、このアプリではできません。そのぶん、まわりの雰囲気でかなえます。");
   $("#wishNote").textContent = notes.join(" ");
 }
