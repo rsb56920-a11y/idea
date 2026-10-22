@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>画像そろえ器（ギアダイバー）</title>
+<style>
+:root{--bg:#090c16;--panel:#121827;--panel2:#1a2236;--line:#2a3552;--fg:#ecf0fa;--muted:#8f9aba;--accent:#ffb03d;--safe:#5be39a;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:'Hiragino Sans','Yu Gothic',sans-serif;line-height:1.6}
+.wrap{max-width:980px;margin:0 auto;padding:16px;display:grid;gap:14px}
+h1{margin:0;font-size:1.4rem}
+.sub{color:var(--muted);font-size:.85rem}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;display:grid;gap:10px}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+select,button,input[type=file]{font:inherit;color:inherit}
+select{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:8px;min-width:260px}
+button{background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:9px 14px;font-weight:700;cursor:pointer}
+button.hot{background:var(--accent);border-color:var(--accent);color:#211202}
+button:disabled{opacity:.4;cursor:default}
+#drop{border:2px dashed var(--line);border-radius:12px;padding:22px;text-align:center;color:var(--muted)}
+#drop.over{border-color:var(--accent);color:var(--fg)}
+.views{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+@media (max-width:700px){.views{grid-template-columns:1fr}}
+.view{display:grid;gap:6px}
+.view canvas{width:100%;height:auto;max-height:60vh;object-fit:contain;border-radius:10px;border:1px solid var(--line);
+  background:conic-gradient(#2a3048 25%,#1c2134 0 50%,#2a3048 0 75%,#1c2134 0) 0 0/24px 24px}
+.dest{font-weight:700;color:var(--safe)}
+label{display:flex;gap:6px;align-items:center}
+input[type=range]{width:180px}
+.done{color:var(--safe);font-size:.85rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div>
+    <h1>画像そろえ器</h1>
+    <div class="sub">PixAI で作った画像を入れると、背景を消して、ゲーム用のサイズと名前にそろえて保存します。</div>
+  </div>
+
+  <div class="panel">
+    <div class="row">
+      <b>① どの画像にする？</b>
+      <select id="target"></select>
+    </div>
+    <div class="sub" id="tInfo"></div>
+  </div>
+
+  <div class="panel">
+    <b>② PixAI の画像を入れる</b>
+    <div id="drop">ここに画像をドラッグ<br>または <input type="file" id="file" accept="image/*"></div>
+    <div class="row">
+      <label><input type="checkbox" id="rmbg" checked> 背景を消す</label>
+      <label>消す強さ <input type="range" id="tol" min="5" max="120" value="40"> <span id="tolV">40</span></label>
+    </div>
+    <div class="sub">キャラやロボの白い部分まで消えてしまうときは「消す強さ」を下げてください。背景が残るときは上げてください。</div>
+  </div>
+
+  <div class="views">
+    <div class="view"><b>入れた画像</b><canvas id="src" width="10" height="10"></canvas></div>
+    <div class="view"><b>できあがり</b><canvas id="out" width="10" height="10"></canvas><div class="sub" id="outInfo"></div></div>
+  </div>
+
+  <div class="panel">
+    <div class="row">
+      <b>③ 保存</b>
+      <button class="hot" id="save" disabled>保存する</button>
+      <span class="done" id="done"></span>
+    </div>
+    <div class="sub">ダウンロードフォルダに保存されます。できたファイルを <span class="dest" id="dest"></span> に移してください。保存すると、①は自動で次の画像に進みます。</div>
+  </div>
+</div>
+
+<script>
+(()=>{
+'use strict';
+const $=s=>document.querySelector(s);
+/* ゲーム側（index.html）と同じ置き方。ロボの1マス＝3.2ピクセル、512×512 の真ん中＝ロボの (0,-4) */
+const MU=3.2,mx=x=>256+x*MU,my=y=>256+(y+4)*MU;
+const mbox=(x0,y0,x1,y1)=>({x:mx(x0),y:my(y0),w:(x1-x0)*MU,h:(y1-y0)*MU});
+const T=[];
+const NAMES={akane:'アカネ',shizuku:'シズク',ruka:'ルカ',tetsu:'テツ',noa:'ノア'};
+const EXN={normal:'ふつう',smile:'笑顔',serious:'真剣',sad:'悲しみ'};
+for(const id in NAMES)for(const f in EXN)T.push({grp:'パイロット',file:`${id}_${f}`,dir:'pilots',label:`${NAMES[id]}（${EXN[f]}）`,w:1024,h:1536,mode:'pilot'});
+const MP=[
+  ['body','胴体（頭こみ）',mbox(-46,-72,46,18)],
+  ['arm_rifle','腕：パルスライフル',mbox(30,-80,58,2)],['arm_gatling','腕：ガトリング',mbox(30,-80,58,2)],
+  ['arm_shotgun','腕：ブラストショット',mbox(30,-80,58,2)],['arm_cannon','腕：バスターキャノン',mbox(28,-80,60,2)],
+  ['arm_drill','腕：ドリル',mbox(28,-80,60,2)],['arm_flame','腕：フレイム',mbox(30,-80,62,2)],
+  ['sho_missile','肩：ミサイルポッド',mbox(-62,-60,-18,-22)],['sho_laser','肩：レーザーキャノン',mbox(-54,-80,-26,-24)],
+  ['sho_bit','肩：ガンビット',mbox(-56,-50,-22,-24)],['sho_mortar','肩：グレネード砲',mbox(-60,-68,-20,-24)],
+  ['sho_shield','肩：シールド',mbox(-64,-56,-28,12)],
+  ['leg_biped','脚：二脚',mbox(-26,4,26,38)],['leg_hover','脚：ホバー',mbox(-36,4,36,32)],
+  ['leg_tread','脚：キャタピラ',mbox(-40,2,40,40)],['leg_jet','脚：ジェット',mbox(-28,6,28,40)]
+];
+for(const [f,l,box] of MP)T.push({grp:'ロボ',file:f,dir:'mech',label:l,w:512,h:512,mode:'mech',box});
+for(const [f,l,s] of [['drone','ドローン',256],['diver','ダイバー',256],['turret','砲台',256],['elite','エリート',512],
+  ['boss_garm','ボス：ガルム',1024],['boss_crystal','ボス：クリスタロス',1024],['boss_volca','ボス：ヴォルカ',1024],['boss_nemesis','ボス：ネメシス',1024]])
+  T.push({grp:'敵',file:f,dir:'enemies',label:l,w:s,h:s,mode:'enemy'});
+for(const [i,l] of [[1,'入口層'],[2,'結晶洞'],[3,'溶鉄層'],[4,'深淵']])T.push({grp:'背景',file:`layer${i}`,dir:'bg',label:l,w:1920,h:1080,mode:'bg'});
+
+const sel=$('#target');
+const groups={};for(const t of T)(groups[t.grp]=groups[t.grp]||[]).push(t);
+sel.innerHTML=Object.entries(groups).map(([g,l])=>`<optgroup label="${g}">${l.map(t=>`<option value="${T.indexOf(t)}">${t.label} → ${t.file}.png</option>`).join('')}</optgroup>`).join('');
+const MODEINFO={pilot:'縦長の立ち絵。体の位置がずれないよう、そのまま縮めて下にそろえます（4つの表情は同じ構図で作ってください）。',
+  mech:'パーツは余白を切って、ロボの正しい場所（腕＝右、肩＝左上、脚＝下）に自動で置きます。点線の枠がその場所です。',
+  enemy:'余白を切って、真ん中に大きく置きます。',bg:'背景は消さずに、横1920×縦1080 に切りそろえます。'};
+let img=null,noGuide=false;const done=new Set();
+const cur=()=>T[+sel.value];
+function showInfo(){
+  const t=cur();
+  $('#tInfo').textContent=`${t.file}.png ・ ${t.w}×${t.h} ・ ${MODEINFO[t.mode]}`;
+  $('#dest').textContent=`gear-diver/assets/${t.dir}/`;
+  $('#rmbg').checked=t.mode!=='bg';
+  $('#done').textContent=done.has(t.file)?'この画像は保存ずみ':'';
+  render();
+}
+sel.addEventListener('change',showInfo);
+
+function load(f){
+  if(!f||!f.type.startsWith('image/'))return;
+  const r=new FileReader();
+  r.onload=()=>{const i=new Image();i.onload=()=>{img=i;render();};i.src=r.result;};
+  r.readAsDataURL(f);
+}
+$('#file').addEventListener('change',e=>load(e.target.files[0]));
+const drop=$('#drop');
+drop.addEventListener('dragover',e=>{e.preventDefault();drop.classList.add('over');});
+drop.addEventListener('dragleave',()=>drop.classList.remove('over'));
+drop.addEventListener('drop',e=>{e.preventDefault();drop.classList.remove('over');load(e.dataTransfer.files[0]);});
+window.addEventListener('dragover',e=>e.preventDefault());
+window.addEventListener('drop',e=>{e.preventDefault();load(e.dataTransfer.files[0]);});
+$('#tol').addEventListener('input',e=>{$('#tolV').textContent=e.target.value;render();});
+$('#rmbg').addEventListener('change',render);
+
+/* 背景消し：ふちの色を背景色とみなし、ふちからつながっている似た色を透明にする */
+function removeBg(c,tol){
+  const x=c.getContext('2d'),W=c.width,H=c.height,d=x.getImageData(0,0,W,H),p=d.data;
+  let r=0,g=0,b=0,n=0;
+  const add=i=>{r+=p[i];g+=p[i+1];b+=p[i+2];n++;};
+  for(let i=0;i<W;i+=4){add(i*4);add(((H-1)*W+i)*4);}for(let j=0;j<H;j+=4){add(j*W*4);add((j*W+W-1)*4);}
+  r/=n;g/=n;b/=n;
+  const dist=i=>Math.hypot(p[i]-r,p[i+1]-g,p[i+2]-b);
+  const mark=new Uint8Array(W*H),st=[];
+  const push=k=>{if(!mark[k]&&dist(k*4)<tol){mark[k]=1;st.push(k);}};
+  for(let i=0;i<W;i++){push(i);push((H-1)*W+i);}for(let j=0;j<H;j++){push(j*W);push(j*W+W-1);}
+  while(st.length){const k=st.pop(),xx=k%W,yy=(k/W)|0;if(xx>0)push(k-1);if(xx<W-1)push(k+1);if(yy>0)push(k-W);if(yy<H-1)push(k+W);}
+  for(let k=0;k<W*H;k++){
+    if(mark[k]){p[k*4+3]=0;continue;}
+    const xx=k%W,yy=(k/W)|0;
+    if((xx>0&&mark[k-1])||(xx<W-1&&mark[k+1])||(yy>0&&mark[k-W])||(yy<H-1&&mark[k+W])){
+      const a=Math.min(1,Math.max(0,(dist(k*4)-tol)/(tol*.8)));p[k*4+3]=Math.round(p[k*4+3]*Math.max(.15,a));
+    }
+  }
+  x.putImageData(d,0,0);
+}
+/* 透明な余白を切った範囲 */
+function bounds(c){
+  const W=c.width,H=c.height,p=c.getContext('2d').getImageData(0,0,W,H).data;
+  let x0=W,y0=H,x1=-1,y1=-1;
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++)if(p[(y*W+x)*4+3]>16){if(x<x0)x0=x;if(x>x1)x1=x;if(y<y0)y0=y;if(y>y1)y1=y;}
+  return x1<0?{x:0,y:0,w:W,h:H}:{x:x0,y:y0,w:x1-x0+1,h:y1-y0+1};
+}
+function render(){
+  const t=cur(),src=$('#src'),out=$('#out');
+  out.width=t.w;out.height=t.h;
+  const o=out.getContext('2d');o.clearRect(0,0,t.w,t.h);
+  if(t.mode==='mech'&&!noGuide){o.save();o.strokeStyle='rgba(255,176,61,.8)';o.lineWidth=3;o.setLineDash([10,8]);o.strokeRect(t.box.x,t.box.y,t.box.w,t.box.h);o.restore();}
+  $('#save').disabled=!img;
+  if(!img){src.width=src.height=10;$('#outInfo').textContent='';return;}
+  // 大きすぎる画像は、処理を軽くするため長い辺 1600 まで縮める
+  const k=Math.min(1,1600/Math.max(img.naturalWidth,img.naturalHeight));
+  src.width=Math.round(img.naturalWidth*k);src.height=Math.round(img.naturalHeight*k);
+  const s=src.getContext('2d');s.clearRect(0,0,src.width,src.height);s.drawImage(img,0,0,src.width,src.height);
+  if($('#rmbg').checked)removeBg(src,+$('#tol').value);
+  o.clearRect(0,0,t.w,t.h);o.imageSmoothingQuality='high';
+  if(t.mode==='bg'){
+    const f=Math.max(t.w/src.width,t.h/src.height),w=src.width*f,h=src.height*f;
+    o.drawImage(src,(t.w-w)/2,(t.h-h)/2,w,h);
+  }else if(t.mode==='pilot'){
+    const f=Math.min(t.w/src.width,t.h/src.height),w=src.width*f,h=src.height*f;
+    o.drawImage(src,(t.w-w)/2,t.h-h,w,h);
+  }else{
+    const b=bounds(src),box=t.mode==='mech'?t.box:{x:t.w*.06,y:t.w*.06,w:t.w*.88,h:t.h*.88};
+    const f=Math.min(box.w/b.w,box.h/b.h),w=b.w*f,h=b.h*f;
+    o.drawImage(src,b.x,b.y,b.w,b.h,box.x+(box.w-w)/2,box.y+(box.h-h)/2,w,h);
+  }
+  $('#outInfo').textContent=`${t.file}.png ・ ${t.w}×${t.h}`;
+}
+$('#save').addEventListener('click',()=>{
+  const t=cur();if(!img)return;
+  noGuide=true;render();noGuide=false; // 保存する絵には点線の枠を入れない
+  const out=$('#out');
+  const finish=()=>{done.add(t.file);
+    const i=+sel.value;if(i<T.length-1){sel.value=String(i+1);img=null;$('#file').value='';showInfo();}
+    $('#done').textContent=`${t.file}.png を保存しました → assets/${t.dir}/ へ`;};
+  out.toBlob(bl=>{const a=document.createElement('a');a.href=URL.createObjectURL(bl);a.download=`${t.file}.png`;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),4000);finish();},'image/png');
+});
+showInfo();
+})();
+</script>
+</body>
+</html>
